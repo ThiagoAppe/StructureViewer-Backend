@@ -1,0 +1,18 @@
+[
+    {
+        "title": "Gestion de Articulos",
+        "path": "gestiondearticulos"
+    },
+    {
+        "title": "Ingreso de nueva materia prima",
+        "path": "ingreso"
+    },
+    {
+        "title": "Alertas por bajo inventario",
+        "path": "alertas"
+    },
+    {
+        "title": "Proveedores y órdenes de compra",
+        "path": "proveedores"
+    }
+]
