@@ -1,16 +1,17 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import List
 
 from app.services.structure import GetStructure
 from app.services.comparation import CompareStructures
+from app.validation import AuthRequired
 
 router = APIRouter()
 
 class CompareRequest(BaseModel):
     Codes: List[str]
 
-@router.post("/compare")
+@router.post("/compare", dependencies=[Depends(AuthRequired)])
 async def Compare(data: CompareRequest):
     codes = data.Codes
     if not codes or len(codes) < 2:

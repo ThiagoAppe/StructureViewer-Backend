@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
 from app.services.structure import GetStructure
+from app.validation import AuthRequired  # Importa tu validador
 
 router = APIRouter()
 
-@router.get("/estructura")
+@router.get("/estructura", dependencies=[Depends(AuthRequired)])
 def obtener_estructura(codigo: str = Query(..., description="Código del artículo")):
     estructura, error = GetStructure(codigo.strip().upper())
     if error:

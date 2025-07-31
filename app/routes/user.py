@@ -76,7 +76,7 @@ def login(data: LoginData, response: Response, db: Session = Depends(GetDb)):
     )
 
 
-@router.post("/logout")
+@router.post("/logout", dependencies=[Depends(AuthRequired)])
 def Logout(response: Response):
     response = JSONResponse(content={"message": "Sesión cerrada"})
     response.delete_cookie(key="access_token")

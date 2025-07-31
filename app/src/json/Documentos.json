@@ -1,0 +1,32 @@
+[
+    {
+        "title": "Articulos",
+        "description": "Explorá la estructura jerárquica de un artículo por código.",
+        "path": "/articulos",
+        "functions": [
+            "Buscar Articulos",
+            "Comparar Estructuras",
+            "Visualizar Estructuras"
+        ]
+    },
+    {
+        "title": "Control de Documentos",
+        "description": "Gestión de documentos y validación contra estructuras.",
+        "path": "/documentos",
+        "functions": [
+            "Crear y modificar documentos",
+            "Solicitar firmas de documentos",
+            "Corroborar documento contra estructuras"
+        ]
+    },
+    {
+        "title": "Control de Gerbers",
+        "description": "Gestión y validación de archivos Gerber",
+        "path": "/gerbers",
+        "functions": [
+            "Carga y visualización de archivos Gerber",
+            "Validación de panelización de plaquetas",
+            "Control y gestión de estencils"
+        ]
+    }
+]
