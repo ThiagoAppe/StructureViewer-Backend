@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import List
 
-from app.services.structure import GetStructure
-from app.services.comparation import CompareStructures
+from app.services.articulos.structure import GetStructure
+from app.services.articulos.comparation import CompareStructures
 from app.validation import AuthRequired
 
 router = APIRouter()

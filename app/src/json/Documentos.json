@@ -1,32 +1,32 @@
 [
     {
-        "title": "Articulos",
-        "description": "Explorá la estructura jerárquica de un artículo por código.",
-        "path": "/articulos",
+        "title": "Analizar Documento",
+        "description": "Contrastar un documento específico contra la estructura de artículos y visualizar diferencias.",
+        "path": "/analyze",
         "functions": [
-            "Buscar Articulos",
-            "Comparar Estructuras",
-            "Visualizar Estructuras"
+            "Buscar artículo por código",
+            "Comparar estructura del documento",
+            "Visualizar diferencias"
         ]
     },
     {
-        "title": "Control de Documentos",
-        "description": "Gestión de documentos y validación contra estructuras.",
-        "path": "/documentos",
+        "title": "Dashboard de Documentos",
+        "description": "Panel de gestión de documentos: ver, leer y contrastar documentos enviados o recibidos para firma.",
+        "path": "/dashboard",
         "functions": [
-            "Crear y modificar documentos",
-            "Solicitar firmas de documentos",
+            "Visualizar documentos enviados y recibidos",
+            "Gestionar estados y seguimiento de firmas",
             "Corroborar documento contra estructuras"
         ]
     },
     {
-        "title": "Control de Gerbers",
-        "description": "Gestión y validación de archivos Gerber",
-        "path": "/gerbers",
+        "title": "Solicitar Firma",
+        "description": "Interfaz para crear y gestionar solicitudes de firma de documentos.",
+        "path": "/request-signature",
         "functions": [
-            "Carga y visualización de archivos Gerber",
-            "Validación de panelización de plaquetas",
-            "Control y gestión de estencils"
+            "Crear solicitud de firma",
+            "Enviar documentos para firma",
+            "Gestionar solicitudes pendientes"
         ]
     }
 ]

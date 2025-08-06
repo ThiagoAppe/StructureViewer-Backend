@@ -25,7 +25,7 @@ class LoginData(BaseModel):
     password: str
 
 
-def GenerateToken(db: Session, User, exp_minutes: int = 30):
+def GenerateToken(db: Session, User, exp_minutes: int = 120):
     now = datetime.now(timezone.utc)
     exp = now + timedelta(minutes=exp_minutes)
     jti = str(uuid4())
@@ -76,7 +76,7 @@ def login(data: LoginData, response: Response, db: Session = Depends(GetDb)):
     )
 
 
-@router.post("/logout", dependencies=[Depends(AuthRequired)])
+@router.post("/logout")
 def Logout(response: Response):
     response = JSONResponse(content={"message": "Sesión cerrada"})
     response.delete_cookie(key="access_token")

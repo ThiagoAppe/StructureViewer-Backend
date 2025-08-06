@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, HTTPException, Depends
-from app.services.structure import GetStructure
-from app.validation import AuthRequired  # Importa tu validador
+from app.services.articulos.structure import GetStructure
+from app.validation import AuthRequired
 
 router = APIRouter()
 
