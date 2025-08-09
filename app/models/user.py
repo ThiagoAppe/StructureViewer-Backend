@@ -14,4 +14,6 @@ class User(Base):
     HashedPassword = Column(String(255), nullable=False)
     LastToken = Column(String(255), nullable=True)
 
+    UserFiles = relationship("UserFile", back_populates="User", cascade="all, delete-orphan")
+
     SubAreaPermissions = relationship("UserSubAreaPermission", back_populates="User")

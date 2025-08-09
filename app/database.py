@@ -20,7 +20,6 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Importar modelos para crear tablas
 from app.models import department, subDepartment, user, userSubAreaPermission
 
 def GetDb():

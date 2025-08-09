@@ -8,12 +8,25 @@ from app.routes.structure import router as Structure_router
 from app.routes.comparation import router as Comparation_router
 from app.routes.documents import router as Documents_router
 
-# --- Lifespan event handler ---
+from app.services.documents.documentHandler.documentHandler import start_watchdog_scheduler
+
+# variable para guardar scheduler y poder detenerlo
+scheduler = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global scheduler
     print("App arrancó con la configuración CORS")
+
+    # Iniciar watchdog scheduler
+    scheduler = start_watchdog_scheduler()
+
     yield
+
     print("App finalizando...")
+    if scheduler:
+        scheduler.shutdown()
+        print("Scheduler detenido")
 
 app = FastAPI(lifespan=lifespan)
 
