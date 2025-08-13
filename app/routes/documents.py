@@ -10,7 +10,7 @@ from app.database import GetDb
 from app.validation import AuthRequired
 
 from app.services.documents.analize import AnalyzeDocument
-from app.services.documents.documentHandler.documentHandler import SaveUploadedFile
+from app.services.documents.documentHandler.documentHandler import SaveUploadedFile, ProcessDocumentFromCache
 
 logger = GetLogger("Documents")
 
@@ -37,47 +37,31 @@ def GetDocumentos(db: Session = Depends(GetDb)):
 
 @router.post("/Analyze", dependencies=[Depends(AuthRequired)])
 async def AnalyzePDF(
-    file: UploadFile = File(...),
-    coords: str = Form(...),
+    Uuid: str = Form(...),
+    Coords: str = Form(...),
     db: Session = Depends(GetDb),
 ):
     """
-    Ruta para analizar un PDF con coordenadas dadas. Guarda los datos en cache, 
-    ejecuta el análisis en memoria, y elimina los archivos temporales al finalizar.
+    Analiza un archivo en ___cache___ usando su UUID.
+    Borra el archivo solo si el análisis fue exitoso.
     """
-    cache_dir = Path(__file__).resolve().parent.parent.parent / "___cache___"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    pdf_path = cache_dir / file.filename
-    json_path = cache_dir / f"{file.filename}.json"
-
     try:
-        pdf_bytes = await file.read()
-        coords_dict = json.loads(coords)
+        CoordsDict = json.loads(Coords)
+    except json.JSONDecodeError:
+        return {"success": False, "detail": "Invalid coordinates format"}
 
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
+    async def ProcessCallback(FileBytes):
+        return await AnalyzeDocument(FileBytes, CoordsDict, db)
 
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(coords_dict, f, indent=4)
+    def DeleteCondition(Result):
+        return Result.get("success", False)
 
-        result = await AnalyzeDocument(pdf_bytes, coords_dict, db)
-
-        return {"success": True, "data": result}
-
-    except Exception as e:
-        logger.error(f"Error analyzing document: {str(e)}")
-        return {"success": False, "detail": str(e)}
-
-    finally:
-        try:
-            if pdf_path.exists():
-                pdf_path.unlink()
-            if json_path.exists():
-                json_path.unlink()
-        except Exception as cleanup_error:
-            logger.warning(f"No se pudieron borrar archivos temporales: {str(cleanup_error)}")
-
+    return await ProcessDocumentFromCache(
+        Uuid=Uuid,
+        DbSession=db,
+        ProcessCallback=ProcessCallback,
+        DeleteCondition=DeleteCondition
+    )
 
 @router.post("/DocumentHandler", dependencies=[Depends(AuthRequired)])
 async def HandleDocument(

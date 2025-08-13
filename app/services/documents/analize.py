@@ -14,57 +14,46 @@ from app.services.documents.analizeUtils.prepOCR import CropPDFRegion
 CACHE_DIR = Path(__file__).resolve().parents[2] / "___cache___"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-async def AnalyzeDocument(
-    coords: Annotated[bytes, Form()],
-    db: Session,
-    file: UploadFile = File(...)
-):
+# analyze_service.py (o donde tengas esta lógica)
+from PIL import Image
+from fastapi import HTTPException
+import json
+
+async def AnalyzeDocument(PdfBytes: bytes, CoordsData: dict, DbSession):
     """
     Orquesta el análisis de un PDF basado en coordenadas.
-    1. Guarda el PDF subido.
-    2. Guarda las coordenadas como JSON.
-    3. Recorta la región de interés.
-    4. Aplica OCR sobre la imagen recortada.
-    5. Procesa y normaliza los códigos extraídos.
-    6. Limpia archivos temporales.
-    7. Devuelve los resultados.
+    Este método asume que el PDF ya está en memoria (bytes) y no se encarga
+    de leerlo desde disco ni de borrarlo. Eso lo maneja documentHandler.
+    
+    Flujo:
+    1. Guardar el PDF temporalmente para operaciones internas.
+    2. Guardar las coordenadas como JSON temporal.
+    3. Recortar la región de interés.
+    4. Aplicar OCR sobre la imagen recortada.
+    5. Procesar y normalizar los códigos extraídos.
+    6. Retornar los resultados.
     """
 
-    unique_id = str(uuid.uuid4())
-    base_path = CACHE_DIR / unique_id
-
     try:
-        # Decodificar coords de bytes a str
-        try:
-            coords_str = coords.decode("utf-8")
-        except UnicodeDecodeError:
-            raise HTTPException(
-                status_code=400,
-                detail="Error de codificación en 'coords' (no es UTF-8 válido)."
-            )
+        # Generar rutas temporales únicas (pero no en ___cache___)
+        TempPdfPath = CACHE_DIR / "__temp_analysis__.pdf"
+        TempJsonPath = CACHE_DIR / "__temp_analysis__.json"
 
-        # Parsear JSON
-        try:
-            coords_data = json.loads(coords_str)
-        except json.JSONDecodeError:
-            raise HTTPException(
-                status_code=400,
-                detail="Formato de coordenadas no soportado. Debe ser JSON válido."
-            )
-
-        # Guardar PDF en cache
-        pdf_path = await SaveUploadedPDF(file, base_path.with_suffix(".pdf"))
+        # Guardar PDF temporal
+        with open(TempPdfPath, "wb") as f:
+            f.write(PdfBytes)
 
         # Guardar JSON de coordenadas
-        SaveCoordsJSON(coords_data, base_path.with_suffix(".json"))
+        with open(TempJsonPath, "w", encoding="utf-8") as f:
+            json.dump(CoordsData, f, indent=4)
 
         # Recortar región del PDF como imagen
         cropped_image: Image.Image = CropPDFRegion(
-            pdf_path, coords_data, page_number=coords_data.get("page", 0)
+            TempPdfPath, CoordsData, page_number=CoordsData.get("page", 0)
         )
 
         # Ejecutar OCR
-        ocr_result = PerformOCR(cropped_image, base_path)
+        ocr_result = PerformOCR(cropped_image, TempPdfPath)
 
         # Normalizar códigos
         codigos_normalizados = PreProcessExtractedCodes(ocr_result["codes"])
@@ -74,8 +63,7 @@ async def AnalyzeDocument(
             "ocr_text": ocr_result["text"],
             "raw_codes": ocr_result["codes"],
             "normalized_codes": codigos_normalizados,
-            "coords": coords_data,
-            "filename": pdf_path.name
+            "coords": CoordsData
         }
 
     except HTTPException as he:
@@ -85,11 +73,9 @@ async def AnalyzeDocument(
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
-        # Eliminar todos los archivos relacionados
-        for ext in [".pdf", ".json", ".png", ".txt"]:
+        for path in [TempPdfPath, TempJsonPath]:
             try:
-                temp_file = base_path.with_suffix(ext)
-                if temp_file.exists():
-                    temp_file.unlink()
-            except Exception as e:
-                print(f"[⚠️] No se pudo eliminar archivo temporal {temp_file}: {e}")
+                if path.exists():
+                    path.unlink()
+            except Exception as cleanup_error:
+                print(f"[⚠️] No se pudo eliminar temporal {path}: {cleanup_error}")

@@ -1,6 +1,8 @@
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import glob
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -57,7 +59,7 @@ def cleanExpiredFiles():
     try:
         expiration_threshold = datetime.now(timezone.utc) - timedelta(hours=EXPIRATION_HOURS)
 
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
         cache_dir = os.path.join(base_dir, CACHE_FOLDER_NAME)
 
         expired_files = (
@@ -69,16 +71,18 @@ def cleanExpiredFiles():
         logger.info(f"Iniciando limpieza de {len(expired_files)} archivos expirados.")
 
         for user_file in expired_files:
-            physical_file_path = os.path.join(cache_dir, user_file.FileUuid)
+            pattern = os.path.join(cache_dir, f"{user_file.FileUuid}.*")
+            files_to_delete = glob.glob(pattern)
 
-            try:
-                if os.path.exists(physical_file_path):
-                    os.remove(physical_file_path)
-                    logger.info(f"Archivo físico eliminado: {physical_file_path}")
-                else:
-                    logger.warning(f"Archivo físico no encontrado para eliminar: {physical_file_path}")
-            except Exception as e:
-                logger.error(f"Error eliminando archivo físico {physical_file_path}: {e}")
+            if not files_to_delete:
+                logger.warning(f"No physical file found to delete for UUID: {user_file.FileUuid}")
+            else:
+                for physical_file_path in files_to_delete:
+                    try:
+                        os.remove(physical_file_path)
+                        logger.info(f"Archivo físico eliminado: {physical_file_path}")
+                    except Exception as e:
+                        logger.error(f"Error eliminando archivo físico {physical_file_path}: {e}")
 
             try:
                 success = delete_user_file(db, user_file.Id)
@@ -95,6 +99,53 @@ def cleanExpiredFiles():
         db.close()
 
 
+async def ProcessDocumentFromCache(Uuid: str, DbSession, ProcessCallback, DeleteCondition):
+    """
+    Lee un documento desde ___cache___ usando el UUID.
+    - Soporta cualquier extensión.
+    - Actualiza en DB la última vez que fue utilizado.
+    - Ejecuta el proceso y decide si eliminar el archivo según DeleteCondition.
+    """
+
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+    cache_dir = os.path.join(base_dir, CACHE_FOLDER_NAME)
+
+    Matches = glob.glob(os.path.join(cache_dir, f"{Uuid}.*"))
+    print("Uuid:", Uuid)
+    if not Matches:
+        logger.warning(f"No file found for UUID: {Uuid}")
+        return {"success": False, "detail": "File not found for given UUID"}
+
+    FilePath = Matches[0]
+
+    try:
+        file_record = DbSession.query(UserFile).filter(UserFile.FileUuid == Uuid).first()
+        if file_record:
+            file_record.LastUsed = datetime.now(timezone.utc)
+            DbSession.commit()
+            logger.info(f"Updated LastUsed for UUID {Uuid}")
+
+        with open(FilePath, "rb") as f:
+            FileBytes = f.read()
+
+        Result = await ProcessCallback(FileBytes)
+
+        if DeleteCondition(Result):
+            try:
+                os.remove(FilePath)
+                logger.info(f"File deleted for UUID {Uuid}: {os.path.basename(FilePath)}")
+            except Exception as e:
+                logger.warning(f"Could not delete file {os.path.basename(FilePath)}: {str(e)}")
+        else:
+            logger.info(f"File retained for UUID {Uuid}")
+
+        return Result
+
+    except Exception as e:
+        logger.error(f"Error processing file {os.path.basename(FilePath)}: {str(e)}")
+        return {"success": False, "detail": str(e)}
+
+#----------WATCHDOG----------
 def start_watchdog_scheduler():
     """
     Inicializa y lanza el scheduler para limpieza periódica.
