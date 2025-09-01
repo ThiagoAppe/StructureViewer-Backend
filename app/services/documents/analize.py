@@ -10,6 +10,7 @@ from app.services.documents.analizeUtils.ocr import PerformOCR
 from app.services.documents.analizeUtils.preProcessor import PreProcessExtractedCodes
 from app.services.documents.analizeUtils.pdfManage import SaveUploadedPDF, SaveCoordsJSON
 from app.services.documents.analizeUtils.prepOCR import CropPDFRegion
+from app.services.documents.analizeUtils.comparator import CompareExtractedCodesWithStructure
 
 CACHE_DIR = Path(__file__).resolve().parents[2] / "___cache___"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -19,7 +20,7 @@ from PIL import Image
 from fastapi import HTTPException
 import json
 
-async def AnalyzeDocument(PdfBytes: bytes, CoordsData: dict, DbSession):
+async def AnalyzeDocument(PdfBytes: bytes, CoordsData: dict, Codigo: str, DbSession):
     """
     Orquesta el análisis de un PDF basado en coordenadas.
     Este método asume que el PDF ya está en memoria (bytes) y no se encarga
@@ -58,13 +59,22 @@ async def AnalyzeDocument(PdfBytes: bytes, CoordsData: dict, DbSession):
         # Normalizar códigos
         codigos_normalizados = PreProcessExtractedCodes(ocr_result["codes"])
 
+        # Generar informe de comparación
+        report = await CompareExtractedCodesWithStructure(
+            MainCode=Codigo,
+            ExtractedCodes=codigos_normalizados,
+            DbSession=DbSession
+        )
+
         return {
             "success": True,
             "ocr_text": ocr_result["text"],
             "raw_codes": ocr_result["codes"],
             "normalized_codes": codigos_normalizados,
-            "coords": CoordsData
+            "coords": CoordsData,
+            "comparison_report": report
         }
+
 
     except HTTPException as he:
         raise he

@@ -39,6 +39,7 @@ def GetDocumentos(db: Session = Depends(GetDb)):
 async def AnalyzePDF(
     Uuid: str = Form(...),
     Coords: str = Form(...),
+    Codigo: str = Form(...),  
     db: Session = Depends(GetDb),
 ):
     """
@@ -51,7 +52,7 @@ async def AnalyzePDF(
         return {"success": False, "detail": "Invalid coordinates format"}
 
     async def ProcessCallback(FileBytes):
-        return await AnalyzeDocument(FileBytes, CoordsDict, db)
+        return await AnalyzeDocument(FileBytes, CoordsDict, Codigo, db)
 
     def DeleteCondition(Result):
         return Result.get("success", False)

@@ -146,7 +146,7 @@ async def ProcessDocumentFromCache(Uuid: str, DbSession, ProcessCallback, Delete
         return {"success": False, "detail": str(e)}
 
 #----------WATCHDOG----------
-def start_watchdog_scheduler():
+def StartWatchdogScheduler():
     """
     Inicializa y lanza el scheduler para limpieza periódica.
     Debe llamarse en startup de FastAPI.
