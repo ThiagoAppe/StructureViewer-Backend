@@ -4,15 +4,15 @@ from app.database import Base
 import enum
 
 class PermissionLevelEnum(str, enum.Enum):
-    Read = "Read"
-    Write = "Write"
+    read = "Read"
+    write = "Write"
 
 class UserSubAreaPermission(Base):
-    __tablename__ = "UserSubAreaPermissions"
+    __tablename__ = "usersubareapermissions"
 
-    UserId = Column(Integer, ForeignKey("Users.Id"), primary_key=True)
-    SubDepartmentId = Column(Integer, ForeignKey("SubDepartments.Id"), primary_key=True)
-    PermissionLevel = Column(Enum(PermissionLevelEnum), nullable=False)
+    id = Column("Id", Integer, primary_key=True)
+    user_id = Column("UserId", Integer, ForeignKey("users.Id"), nullable=False)
+    sub_department_id = Column("SubDepartmentId", Integer, ForeignKey("subdepartments.Id"), nullable=False)
 
-    User = relationship("User", back_populates="SubAreaPermissions")
-    SubDepartment = relationship("SubDepartment", back_populates="Permissions")
+    user = relationship("User", back_populates="sub_area_permissions")
+    sub_department = relationship("SubDepartment", back_populates="sub_area_permissions")

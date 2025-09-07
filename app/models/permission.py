@@ -1,16 +1,31 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Table, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 
+# Tabla intermedia user_permissions
+user_permissions = Table(
+    "userpermissions",
+    Base.metadata,
+    Column("UserId", Integer, ForeignKey("users.Id", ondelete="CASCADE"), primary_key=True),
+    Column("PermissionId", Integer, ForeignKey("permissions.Id", ondelete="CASCADE"), primary_key=True)
+)
 
 class Permission(Base):
-    __tablename__ = "Permissions"
+    __tablename__ = "permissions"
 
-    Id = Column(Integer, primary_key=True, index=True)
-    Name = Column(String(100), unique=True, nullable=False)
+    id = Column("Id", Integer, primary_key=True, index=True)
+    name = Column("Name", String(100), unique=True, nullable=False)
 
-    Users = relationship(
+    # Relación con usuarios
+    users = relationship(
         "User",
-        secondary="UserPermissions",
-        back_populates="Permissions"
+        secondary=user_permissions,
+        back_populates="permissions"
+    )
+
+    # Relación con roles (via rolepermissions)
+    roles = relationship(
+        "Role",
+        secondary="rolepermissions",
+        back_populates="permissions"
     )

@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.database import GetDb
-from app.schemas.user import UserCreate, UserRead
 from app.crud.user import GetUsers, CreateUser, ValidateUser, UpdateLastToken, GetLastToken
 from app.validation import ValidateToken, AuthRequired
+from app.models.user import User
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -21,9 +21,8 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 # --- Login ---
 class LoginData(BaseModel):
-    username: str
+    user_name: str
     password: str
-
 
 def GenerateToken(db: Session, User, exp_minutes: int = 120):
     now = datetime.now(timezone.utc)
@@ -31,64 +30,63 @@ def GenerateToken(db: Session, User, exp_minutes: int = 120):
     jti = str(uuid4())
 
     payload = {
-        "id": User.Id,
+        "id": User.id,
         "jti": jti,
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp())
     }
 
-    last_token = GetLastToken(db, User.Id)
+    last_token = GetLastToken(db, User.id)
 
     if last_token != jti:
-        UpdateLastToken(db, User.Id, jti)
+        UpdateLastToken(db, User.id, jti)
 
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")  # type: ignore
 
-
 @router.get("/me")
-def GetActualUser(payload=Depends(AuthRequired)):
-    return {"usuario": payload["id"]}
+def GetActualUser(payload=Depends(AuthRequired), db: Session = Depends(GetDb)):
+    user_id = payload["id"]
 
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    roles = [role.name for role in user.roles] if user.roles else []
+    permissions = []
+    for role in user.roles:
+        permissions.extend([perm.name for perm in role.permissions])
+
+    return {
+        "user_name": user.user_name,
+        "roles": roles,
+        "permissions": list(set(permissions))
+    }
 
 @router.post("/login")
 def login(data: LoginData, response: Response, db: Session = Depends(GetDb)):
-    user = ValidateUser(db, data.username, data.password)
-    if user:
-        token = GenerateToken(db, user)
-
-        response = JSONResponse(content={"message": "Login exitoso"})
-        response.set_cookie(
-            key="access_token",
-            value=token,
-            httponly=True,
-            secure=False,        # Está bien en local (sin HTTPS)
-            samesite="lax",      # Compatible con `secure=False`
-            max_age=60 * 60,
-            path="/"
+    user = ValidateUser(db, data.user_name, data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos"
         )
 
+    token = GenerateToken(db, user)
 
-        return response
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Usuario o contraseña incorrectos"
+    res = JSONResponse(content={"message": "Login exitoso"})
+    res.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=False,   # cambiar a True en producción con HTTPS
+        samesite="lax",
+        max_age=60 * 60,
+        path="/"
     )
-
+    return res
 
 @router.post("/logout")
-def Logout(response: Response):
-    response = JSONResponse(content={"message": "Sesión cerrada"})
-    response.delete_cookie(key="access_token")
-    return response
-
-
-# --- CRUD ---
-@router.get("/", response_model=list[UserRead], dependencies=[Depends(AuthRequired)])
-def listar_usuarios(db: Session = Depends(GetDb)):
-    return GetUsers(db)
-
-
-@router.post("/", response_model=UserRead, dependencies=[Depends(AuthRequired)])
-def nuevo_usuario(usuario: UserCreate, db: Session = Depends(GetDb)):
-    return CreateUser(db, usuario)
+def logout():
+    res = JSONResponse(content={"message": "Sesión cerrada"})
+    res.delete_cookie(key="access_token")
+    return res

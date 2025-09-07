@@ -1,24 +1,23 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, text
 from sqlalchemy.orm import relationship
-from datetime import datetime
-from enum import Enum as PyEnum
 from app.database import Base
+import enum
 
-class FileStatus(PyEnum):
+class FileStatus(enum.Enum):
     pending = "pending"
     processing = "processing"
     done = "done"
     cancelled = "cancelled"
 
-class UserFile(Base):
-    __tablename__ = "UserFiles"
+class userfile(Base):
+    __tablename__ = "userfiles"
 
-    Id = Column(Integer, primary_key=True, index=True)
-    UserId = Column(Integer, ForeignKey("Users.Id"), nullable=False)
-    FileName = Column(String(255), nullable=False)
-    FileUuid = Column(String(255), unique=True, nullable=False)
-    Status = Column(Enum(FileStatus), default=FileStatus.pending, nullable=False)
-    UploadDate = Column(DateTime, default=datetime.utcnow)
-    LastAccess = Column(DateTime, default=datetime.utcnow)
+    id = Column("Id", Integer, primary_key=True, index=True)
+    user_id = Column("UserId", Integer, ForeignKey("users.Id"), nullable=False)
+    file_name = Column("Filename", String(255), nullable=False)
+    file_uuid = Column("FileUuid", String(32), unique=True, nullable=False)
+    status = Column("Status", Enum(FileStatus), default=FileStatus.pending, nullable=False)
+    upload_date = Column("UploadDate", DateTime, server_default=text("CURRENT_TIMESTAMP"))
+    last_access = Column("LastAccess", DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
-    User = relationship("User", back_populates="UserFiles")
+    user = relationship("User", back_populates="user_files")

@@ -3,9 +3,9 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 class Department(Base):
-    __tablename__ = "Departments"
+    __tablename__ = "departments"
 
-    Id = Column(Integer, primary_key=True, index=True)
-    Name = Column(String(100), unique=True, nullable=False)
+    id = Column("Id", Integer, primary_key=True, index=True)
+    name = Column("Name", String(100), nullable=False)
 
-    SubDepartments = relationship("SubDepartment", back_populates="Department")
+    sub_departments = relationship("SubDepartment", back_populates="department", cascade="all, delete-orphan")

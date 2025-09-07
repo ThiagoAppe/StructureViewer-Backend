@@ -1,22 +1,19 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-
 class UserBase(BaseModel):
-    UserName: str
-    Email: EmailStr
-    DepartmentId: Optional[int] = None
-
+    user_name: str
+    email: EmailStr
+    department_id: Optional[int] = None
 
 class UserCreate(UserBase):
-    Password: str
-
+    password: str
 
 class UserRead(UserBase):
-    Id: int
-    IsActive: bool
-    IsSuperuser: bool
-    LastToken: Optional[str] = None
+    id: int
+    is_active: bool
+    is_superuser: bool
+    last_token: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -13,31 +13,31 @@ def GetUsers(db: Session):
 
 def UpdateLastToken(db: Session, UserId: int, TokenId: str) -> bool:
     # Actualiza el último token de un usuario
-    UserDb = db.query(User).filter(User.Id == UserId).first()
-    if UserDb:
-        UserDb.LastToken = TokenId  # type: ignore
+    user_db = db.query(User).filter(User.id == UserId).first()
+    if user_db:
+        user_db.last_token = TokenId
         db.commit()
-        db.refresh(UserDb)
+        db.refresh(user_db)
         return True
     return False
 
 def GetLastToken(db: Session, UserId: int) -> Optional[str]:
     # Obtiene el último token guardado
-    UserDb = db.query(User).filter(User.Id == UserId).first()
-    return UserDb.LastToken if UserDb else None  # type: ignore
+    user_db = db.query(User).filter(User.id == UserId).first()
+    return user_db.last_token if user_db else None
 
 def CreateUser(db: Session, usuario: UserCreate):
     # Hashear la contraseña antes de guardar
-    hashed_password = pwd_context.hash(usuario.Password)
+    hashed_password = pwd_context.hash(usuario.password)
 
     db_user = User(
-        UserName=usuario.UserName,
-        Email=usuario.Email,
-        HashedPassword=hashed_password,
-        DepartmentId=usuario.DepartmentId,
-        IsActive=True,
-        IsSuperuser=False,
-        LastToken=None,
+        user_name=usuario.user_name,
+        email=usuario.email,
+        hashed_password=hashed_password,
+        department_id=usuario.department_id,
+        is_active=True,
+        is_superuser=False,
+        last_token=None,
     )
     db.add(db_user)
     db.commit()
@@ -46,10 +46,10 @@ def CreateUser(db: Session, usuario: UserCreate):
 
 def ValidateUser(db: Session, username: str, password: str):
     # Valida credenciales del usuario
-    user = db.query(User).filter(User.UserName == username).first()
-    
+    user = db.query(User).filter(User.user_name == username).first()
     if not user:
         return False
 
-    if pwd_context.verify(password, user.HashedPassword):  # type: ignore
+    if pwd_context.verify(password, user.hashed_password):
         return user
+    return False

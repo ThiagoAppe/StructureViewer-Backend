@@ -8,14 +8,14 @@ class FileStatus(str, Enum):
     done = "done"
     cancelled = "cancelled"
 
-class UserFileBase(BaseModel):
+class userfileBase(BaseModel):
     FileName: str
     Status: FileStatus
 
-class UserFileCreate(UserFileBase):
+class userfileCreate(userfileBase):
     UserId: int
 
-class UserFileRead(UserFileBase):
+class userfileRead(userfileBase):
     Id: int
     UserId: int
     UploadDate: datetime

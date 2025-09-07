@@ -74,8 +74,8 @@ async def HandleDocument(
     file_info = await SaveUploadedFile(file, db, user_id)
 
     filtered_info = {
-        "FileName": file_info.FileName,
-        "UUID": file_info.FileUuid,
+        "file_name": file_info.file_name,
+        "uuid": file_info.file_uuid,
         #"Status": file_info.Status,
     }
 

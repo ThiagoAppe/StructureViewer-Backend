@@ -11,7 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.crud.userFile import create_user_file, delete_user_file
-from app.models.userFile import UserFile
+from app.models.userFile import userfile
 from app.database import SessionLocal
 from ___loggin___.loggerConfig import GetLogger
 
@@ -21,11 +21,11 @@ EXPIRATION_HOURS = 24
 CACHE_FOLDER_NAME = "___cache___"
 
 
-async def SaveUploadedFile(file, db: Session, user_id: int) -> UserFile:
+async def SaveUploadedFile(file, db: Session, user_id: int) -> userfile:
     """
     Guarda el archivo en ___cache___ con un UUID como nombre físico.
     Luego crea un registro en DB con el nombre original y el UUID.
-    Devuelve el objeto UserFile creado.
+    Devuelve el objeto userfile creado.
     """
     
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
@@ -63,19 +63,19 @@ def cleanExpiredFiles():
         cache_dir = os.path.join(base_dir, CACHE_FOLDER_NAME)
 
         expired_files = (
-            db.query(UserFile)
-            .filter(UserFile.LastAccess < expiration_threshold)
+            db.query(userfile)
+            .filter(userfile.last_access < expiration_threshold)
             .all()
         )
 
         logger.info(f"Iniciando limpieza de {len(expired_files)} archivos expirados.")
 
         for user_file in expired_files:
-            pattern = os.path.join(cache_dir, f"{user_file.FileUuid}.*")
+            pattern = os.path.join(cache_dir, f"{user_file.file_uuid}.*")
             files_to_delete = glob.glob(pattern)
 
             if not files_to_delete:
-                logger.warning(f"No physical file found to delete for UUID: {user_file.FileUuid}")
+                logger.warning(f"No physical file found to delete for UUID: {user_file.file_uuid}")
             else:
                 for physical_file_path in files_to_delete:
                     try:
@@ -119,11 +119,11 @@ async def ProcessDocumentFromCache(Uuid: str, DbSession, ProcessCallback, Delete
     FilePath = Matches[0]
 
     try:
-        file_record = DbSession.query(UserFile).filter(UserFile.FileUuid == Uuid).first()
+        file_record = DbSession.query(userfile).filter(userfile.file_uuid == Uuid).first()
         if file_record:
-            file_record.LastUsed = datetime.now(timezone.utc)
+            file_record.last_access = datetime.now(timezone.utc)
             DbSession.commit()
-            logger.info(f"Updated LastUsed for UUID {Uuid}")
+            logger.info(f"Updated last_access for UUID {Uuid}")
 
         with open(FilePath, "rb") as f:
             FileBytes = f.read()
