@@ -6,11 +6,11 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from PIL import Image
 
-from app.services.documents.analizeUtils.ocr import PerformOCR
-from app.services.documents.analizeUtils.preProcessor import PreProcessExtractedCodes
-from app.services.documents.analizeUtils.pdfManage import SaveUploadedPDF, SaveCoordsJSON
-from app.services.documents.analizeUtils.prepOCR import CropPDFRegion
-from app.services.documents.analizeUtils.comparator import CompareExtractedCodesWithStructure
+from app.services.documents.analize.analizeUtils.ocr import PerformOCR
+from app.services.documents.analize.analizeUtils.preProcessor import PreProcessExtractedCodes
+from app.services.documents.analize.analizeUtils.pdfManage import SaveUploadedPDF, SaveCoordsJSON
+from app.services.documents.analize.analizeUtils.prepOCR import CropPDFRegion
+from app.services.documents.analize.analizeUtils.comparator import CompareExtractedCodesWithStructure
 
 CACHE_DIR = Path(__file__).resolve().parents[2] / "___cache___"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)

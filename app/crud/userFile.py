@@ -32,7 +32,7 @@ def update_file_status(db: Session, file_id: int, new_status: FileStatus) -> use
     db.refresh(user_file)
     return user_file
 
-def delete_user_file(db: Session, file_id: int) -> bool:
+def delete_user_file(db: Session, file_id) -> bool:
     user_file = get_user_file(db, file_id)
     if not user_file:
         return False

@@ -85,13 +85,13 @@ def cleanExpiredFiles():
                         logger.error(f"Error eliminando archivo físico {physical_file_path}: {e}")
 
             try:
-                success = delete_user_file(db, user_file.Id)
+                success = delete_user_file(db, user_file.id)
                 if success:
-                    logger.info(f"Registro DB eliminado para archivo ID {user_file.Id}")
+                    logger.info(f"Registro DB eliminado para archivo ID {user_file.id}")
                 else:
-                    logger.warning(f"No se pudo eliminar registro DB para archivo ID {user_file.Id}")
+                    logger.warning(f"No se pudo eliminar registro DB para archivo ID {user_file.id}")
             except SQLAlchemyError as e:
-                logger.error(f"Error eliminando registro DB archivo ID {user_file.Id}: {e}")
+                logger.error(f"Error eliminando registro DB archivo ID {user_file.id}: {e}")
 
         logger.info("Limpieza de archivos expirados finalizada.")
 

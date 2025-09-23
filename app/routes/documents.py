@@ -9,7 +9,7 @@ from ___loggin___.loggerConfig import GetLogger
 from app.database import GetDb
 from app.validation import AuthRequired
 
-from app.services.documents.analize import AnalyzeDocument
+from app.services.documents.analize.analize import AnalyzeDocument
 from app.services.documents.documentHandler.documentHandler import SaveUploadedFile, ProcessDocumentFromCache
 
 logger = GetLogger("Documents")
