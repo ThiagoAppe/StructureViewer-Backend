@@ -116,7 +116,7 @@ def GetLastLevelPadres(hijo_code: str):
                 SELECT est_padre, est_hijo
                 FROM manufact.est
                 WHERE est_fechas IS NULL
-                  AND est_hijo = '{current}'
+                    AND est_hijo = '{current}'
             """
             if debug:
                 print("🔹 Query a ejecutar para:", current)

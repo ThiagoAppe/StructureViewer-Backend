@@ -1,18 +1,34 @@
 from typing import Dict, List, Any
 from fastapi import HTTPException
+from collections import Counter
 from app.services.SIMReader.estructura import GetAllHijos
 
-def FlattenStructure(structure: list) -> set:
+
+def FlattenStructure(structure: list) -> List[str]:
     """
     Recibe la estructura de un artículo (lista de nodos con hijos)
-    y devuelve un set con todos los códigos de todos los niveles.
+    y devuelve una lista con todos los códigos (repetidos según cantidad).
     """
-    codes = set()
+    codes = []
     for node in structure:
-        codes.add(node["codigo"])
+        code = node["codigo"]
+        qty = node.get("cantidad")
+
+        # Repetir el código según cantidad (si es numérica)
+        try:
+            qty_int = int(float(qty)) if qty not in ("", None) else 1
+        except ValueError:
+            qty_int = 1
+
+        codes.extend([code] * qty_int)
+
         if node.get("hijos"):
-            codes.update(FlattenStructure(node["hijos"]))
+            codes.extend(FlattenStructure(node["hijos"]))
+
+    print(f"[DEBUG] Códigos con cantidades aplicadas: {codes}")
     return codes
+
+
 
 async def CompareExtractedCodesWithStructure(
     MainCode: str,
@@ -20,31 +36,47 @@ async def CompareExtractedCodesWithStructure(
     DbSession
 ) -> Dict[str, Any]:
     """
-    Compara los códigos extraídos del OCR con la estructura real del artículo.
+    Compara los códigos y sus cantidades entre la estructura real del artículo
+    y los códigos extraídos del OCR.
     """
     try:
         # Obtener estructura real desde la base
         structure_data = GetAllHijos(MainCode)
 
         # Aplanar la estructura para incluir todos los hijos
-        structure_codes = FlattenStructure(structure_data)
+        structure_list = FlattenStructure(structure_data)
 
-        # Normalizar lista OCR
-        extracted_set = set(ExtractedCodes)
+        # Contar ocurrencias (cantidades) de cada código
+        structure_counts = Counter(structure_list)
+        extracted_counts = Counter(ExtractedCodes)
 
-        # Comparar estructuras
-        missing_in_pdf = structure_codes - extracted_set  # Faltan en OCR
-        extra_in_pdf = extracted_set - structure_codes    # Sobran en OCR
-        matched = extracted_set & structure_codes         # Coinciden
+        # Determinar diferencias
+        missing_in_pdf = {}
+        extra_in_pdf = {}
+        matched = {}
+
+        for code, qty in structure_counts.items():
+            extracted_qty = extracted_counts.get(code, 0)
+            if extracted_qty < qty:
+                missing_in_pdf[code] = qty - extracted_qty
+            elif extracted_qty > qty:
+                extra_in_pdf[code] = extracted_qty - qty
+            else:
+                matched[code] = qty
+
+        # También revisar códigos que solo aparecen en OCR
+        for code, qty in extracted_counts.items():
+            if code not in structure_counts:
+                extra_in_pdf[code] = qty
 
         # Informe detallado
         report = {
             "main_code": MainCode,
-            "total_in_structure": len(structure_codes),
-            "total_in_pdf": len(extracted_set),
-            "matched": sorted(list(matched)),
-            "missing_in_pdf": sorted(list(missing_in_pdf)),
-            "extra_in_pdf": sorted(list(extra_in_pdf)),
+            "total_in_structure": sum(structure_counts.values()),
+            "total_in_pdf": sum(extracted_counts.values()),
+            "matched": matched,
+            "missing_in_pdf": missing_in_pdf,
+            "extra_in_pdf": extra_in_pdf,
             "success": True
         }
 

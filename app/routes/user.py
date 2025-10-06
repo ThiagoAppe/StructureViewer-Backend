@@ -24,7 +24,7 @@ class LoginData(BaseModel):
     user_name: str
     password: str
 
-def GenerateToken(db: Session, User, exp_minutes: int = 120):
+def GenerateToken(db: Session, User, exp_minutes: int = 600):
     now = datetime.now(timezone.utc)
     exp = now + timedelta(minutes=exp_minutes)
     jti = str(uuid4())
