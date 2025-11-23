@@ -12,13 +12,19 @@ ORDERED_FIELDS = [
     "art_tipoar",
 ]
 
-def SearchArticles(field: str, value: str, similar: bool = True, limit: int = 50, offset: int = 0):
-    """
-    Busca artículos en la tabla 'art' filtrando por un campo específico.
-    Devuelve solo el código y la descripción.
-    debug=True imprimirá la query y los parámetros.
-    """
 
+def search_articles(field: str, value: str, similar: bool = True, limit: int = 50, offset: int = 0):
+    """
+    Ejecuta una búsqueda de artículos en la tabla 'manufact.art' filtrando por un campo específico.
+    
+    Permite búsquedas parciales (similar=True) o exactas.  
+    Devuelve únicamente el código del artículo y la descripción.  
+    Retorna una lista de diccionarios:  
+    [
+        {"art_articu": "...", "art_descr1": "..."},
+        ...
+    ]
+    """
     debug = False
 
     if field not in ORDERED_FIELDS:
@@ -62,14 +68,18 @@ def SearchArticles(field: str, value: str, similar: bool = True, limit: int = 50
     return results
 
 
-def GetArticlesData(art_codes: list[str]) -> dict:
+def get_articles_data(art_codes: list[str]) -> dict:
     """
-    Devuelve un diccionario con info de artículos, indexado por código.
+    Obtiene datos completos de artículos especificados por código.
+    
+    Retorna un diccionario indexado por código de artículo:
     {
-        "02429-01": { ...datos... },
-        "11624": { ...datos... },
+        "02429-01": { campo: valor, ... },
+        "11624": { campo: valor, ... },
         ...
     }
+    
+    Realiza la consulta en chunks para evitar límites de IN (...)
     """
     debug = True
 
@@ -105,16 +115,9 @@ def GetArticlesData(art_codes: list[str]) -> dict:
                 result = {}
                 for field in ORDERED_FIELDS:
                     value = row[columns.index(field)]
-                    if value is not None and field in ("art_articu", "art_descr1"):
-                        value = value.strip()
                     result[field] = value
 
-                # Indexamos por código para fácil acceso
-                results[result["art_articu"]] = result
-
-    if debug:
-        print(f"🔹 Total artículos obtenidos: {len(results)}")
-        for k, v in list(results.items())[:5]:
-            print(f"{k}: {v}")
+                art_code = result["art_articu"]
+                results[art_code] = result
 
     return results

@@ -1,13 +1,23 @@
-from fastapi import APIRouter, Query, HTTPException,Depends
+from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import List
-from app.services.SIMReader.articulos import ORDERED_FIELDS, SearchArticles, GetArticlesData 
-from app.services.SIMReader.estructura import GetHijos, GetPadres, GetLastLevelPadres, GetAllHijos
-from app.validation import AuthRequired
+from app.services.SIMReader.articulos import (
+    ORDERED_FIELDS,
+    search_articles,
+    get_articles_data
+)
+from app.services.SIMReader.estructura import (
+    get_hijos,
+    get_padres,
+    get_last_level_padres,
+    get_all_hijos
+)
+from app.validation import auth_required
 
 router = APIRouter(prefix="/articulos", tags=["Artículos"])
 
-@router.get("/SearchArticulo", dependencies=[Depends(AuthRequired)])
-def SearchArticulo(
+
+@router.get("/search-articulo", dependencies=[Depends(auth_required)])
+def search_articulo(
     field: str = Query(..., description="Campo por el que filtrar"),
     value: str = Query(..., description="Valor a buscar"),
     similar: bool = Query(False, description="Si True, busca coincidencias parciales"),
@@ -15,14 +25,19 @@ def SearchArticulo(
     offset: int = Query(0, ge=0, description="Desde qué registro comenzar")
 ):
     """
-    Endpoint para buscar artículos por cualquier campo y devolver
-    solo código y descripción.
+    Busca artículos por un campo permitido y retorna código y descripción.
     """
     try:
         if field not in ORDERED_FIELDS:
             raise HTTPException(status_code=400, detail="Campo de búsqueda no permitido.")
 
-        results = SearchArticles(field, value, similar=similar, limit=limit, offset=offset)
+        results = search_articles(
+            field,
+            value,
+            similar=similar,
+            limit=limit,
+            offset=offset
+        )
 
         return {
             "total": len(results),
@@ -33,25 +48,26 @@ def SearchArticulo(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error interno en la búsqueda de artículos.")
 
-@router.get("/GetArticleData", dependencies=[Depends(AuthRequired)])
-def GetArticles(
+
+@router.get("/get-article-data", dependencies=[Depends(auth_required)])
+def get_articles(
     codes: str = Query(..., description="Lista de códigos separados por coma, ej: 02350-01,02351-02")
 ):
     """
-    Endpoint para obtener los campos permitidos de varios artículos por sus códigos.
+    Obtiene los campos permitidos de varios artículos por sus códigos.
     """
     art_codes = [c.strip() for c in codes.split(",") if c.strip()]
     if not art_codes:
         raise HTTPException(status_code=400, detail="No se proporcionaron códigos de artículos.")
 
     try:
-        results = GetArticlesData(art_codes)
+        results = get_articles_data(art_codes)
         return {
             "total": len(results),
             "results": results
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error interno al obtener los artículos.")

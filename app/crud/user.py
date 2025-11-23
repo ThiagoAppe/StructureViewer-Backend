@@ -5,51 +5,88 @@ from passlib.context import CryptContext
 from app.models.user import User
 from app.schemas.user import UserCreate
 
+# Importar tu módulo de logs
+from ___loggin___.logger import get_category_logger
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def GetUsers(db: Session):
+# Logger específico para usuarios
+log = get_category_logger("user")
+
+def get_users(db: Session):
     # Devuelve todos los usuarios
-    return db.query(User).all()
+    try:
+        users = db.query(User).all()
+        log.info("get_users ejecutado correctamente")
+        return users
+    except Exception as e:
+        log.error(f"Error en get_users: {e}")
+        raise
 
-def UpdateLastToken(db: Session, UserId: int, TokenId: str) -> bool:
+def update_last_token(db: Session, user_id: int, token_id: str) -> bool:
     # Actualiza el último token de un usuario
-    user_db = db.query(User).filter(User.id == UserId).first()
-    if user_db:
-        user_db.last_token = TokenId
-        db.commit()
-        db.refresh(user_db)
-        return True
-    return False
+    try:
+        user_db = db.query(User).filter(User.id == user_id).first()
+        if user_db:
+            user_db.last_token = token_id
+            db.commit()
+            db.refresh(user_db)
+            log.info(f"Token actualizado para user_id={user_id}")
+            return True
+        else:
+            log.warning(f"user_id={user_id} no encontrado en update_last_token")
+            return False
+    except Exception as e:
+        log.error(f"Error en update_last_token: {e}")
+        raise
 
-def GetLastToken(db: Session, UserId: int) -> Optional[str]:
+def get_last_token(db: Session, user_id: int) -> Optional[str]:
     # Obtiene el último token guardado
-    user_db = db.query(User).filter(User.id == UserId).first()
-    return user_db.last_token if user_db else None
+    try:
+        user_db = db.query(User).filter(User.id == user_id).first()
+        token = user_db.last_token if user_db else None
+        log.info(f"get_last_token ejecutado para user_id={user_id}")
+        return token
+    except Exception as e:
+        log.error(f"Error en get_last_token: {e}")
+        raise
 
-def CreateUser(db: Session, usuario: UserCreate):
+def create_user(db: Session, usuario: UserCreate):
     # Hashear la contraseña antes de guardar
-    hashed_password = pwd_context.hash(usuario.password)
+    try:
+        hashed_password = pwd_context.hash(usuario.password)
+        db_user = User(
+            user_name=usuario.user_name,
+            email=usuario.email,
+            hashed_password=hashed_password,
+            department_id=usuario.department_id,
+            is_active=True,
+            is_superuser=False,
+            last_token=None,
+        )
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        log.info(f"Usuario creado: {usuario.user_name}")
+        return db_user
+    except Exception as e:
+        log.error(f"Error en create_user: {e}")
+        raise
 
-    db_user = User(
-        user_name=usuario.user_name,
-        email=usuario.email,
-        hashed_password=hashed_password,
-        department_id=usuario.department_id,
-        is_active=True,
-        is_superuser=False,
-        last_token=None,
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
-
-def ValidateUser(db: Session, username: str, password: str):
+def validate_user(db: Session, username: str, password: str):
     # Valida credenciales del usuario
-    user = db.query(User).filter(User.user_name == username).first()
-    if not user:
-        return False
+    try:
+        user = db.query(User).filter(User.user_name == username).first()
+        if not user:
+            log.warning(f"Usuario no encontrado: {username}")
+            return False
 
-    if pwd_context.verify(password, user.hashed_password):
-        return user
-    return False
+        if pwd_context.verify(password, user.hashed_password):
+            log.info(f"Usuario validado: {username}")
+            return user
+        else:
+            log.warning(f"Password incorrecto para usuario: {username}")
+            return False
+    except Exception as e:
+        log.error(f"Error en validate_user: {e}")
+        raise

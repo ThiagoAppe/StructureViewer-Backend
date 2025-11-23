@@ -26,12 +26,18 @@ engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
 )
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+
 Base = declarative_base()
 
 from app.models import department, subDepartment, user, userSubAreaPermission
 
-def GetDb():
+def get_db():
     """
     Retorna la sesión de SQLAlchemy para MySQL.
     Usar con Depends en FastAPI o directamente.
@@ -46,19 +52,18 @@ def GetDb():
 # Configuración Informix (pyodbc con DSN)
 # =========================
 @contextmanager
-def GetSIMDb():
+def get_sim_db():
     """
     Retorna una conexión activa a la base de datos Informix usando DSN.
     Se fuerza el modo de solo lectura para proteger la base de datos.
     Uso:
-        with GetSIMDb() as conn:
+        with get_sim_db() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT ...")
             data = cursor.fetchall()
     """
     conn = None
     try:
-        # Usamos DSN en lugar de parámetros individuales
         conn_str = (
             f"DSN={os.getenv('DB_INFORMIX_DSN', 'manufact64')};"
             f"UID={os.getenv('DB_INFORMIX_UID')};"
@@ -66,10 +71,9 @@ def GetSIMDb():
         )
 
         conn = pyodbc.connect(conn_str)
-        yield ReadOnlyConnection(conn)  # Envuelve la conexión para bloquear escritura
+        yield ReadOnlyConnection(conn)
 
     except pyodbc.Error as e:
-        # No exponemos credenciales ni cadena de conexión en logs
         print(f"❌ Error al conectar con Informix (DSN=manufact64): {e}")
         raise
     finally:
@@ -106,15 +110,14 @@ class ReadOnlyCursor:
 
     def execute(self, query, *args, **kwargs):
         if self.WRITE_OPERATIONS.match(query):
-            raise PermissionError("🚫 Operaciones de escritura no están permitidas en la base de datos SIM.")
+            raise PermissionError("Operación de escritura no permitida en modo solo lectura.")
         return self._cursor.execute(query, *args, **kwargs)
-
-    def fetchone(self):
-        return self._cursor.fetchone()
 
     def fetchall(self):
         return self._cursor.fetchall()
 
-    def __getattr__(self, item):
-        # Redirige cualquier otro atributo al cursor original
-        return getattr(self._cursor, item)
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def close(self):
+        self._cursor.close()

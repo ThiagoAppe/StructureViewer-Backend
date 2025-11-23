@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query, HTTPException, Depends
-from app.services.SIMReader.estructura import GetHijos, GetPadres, GetLastLevelPadres, GetAllHijos
+from app.services.SIMReader.estructura import get_hijos, get_padres, get_last_level_padres, get_all_hijos
 from app.validation import AuthRequired
 
 import logging
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/GetHijos", dependencies=[Depends(AuthRequired)])
-def GetStructureHijos(
+def get_structure_hijos(
     padre_code: str = Query(..., description="Código del artículo padre (est_padre)"),
 ):
     """
@@ -17,16 +17,16 @@ def GetStructureHijos(
     para un artículo padre dado.
     """
     try:
-        results = GetHijos(padre_code)
+        results = get_hijos(padre_code)
         return {
             "total": len(results),
             "results": results
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error interno al obtener los artículos hijos.")
     
 @router.get("/GetPadres", dependencies=[Depends(AuthRequired)])
-def GetStructurePadres(
+def get_structure_padres(
     hijo_code: str = Query(..., description="Código del artículo hijo (est_hijo)"),
 ):
     """
@@ -34,16 +34,16 @@ def GetStructurePadres(
     para un artículo hijo dado.
     """
     try:
-        results = GetPadres(hijo_code)
+        results = get_padres(hijo_code)
         return {
             "total": len(results),
             "results": results
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error interno al obtener los artículos padres.")
     
 @router.get("/GetLastLevelPadres", dependencies=[Depends(AuthRequired)])
-def GetStructureLastLevelPadres(
+def get_structure_last_level_padres(
     hijo_code: str = Query(..., description="Código del artículo hijo")
 ):
     """
@@ -51,28 +51,27 @@ def GetStructureLastLevelPadres(
     para un artículo hijo dado.
     """
     try:
-        results = GetLastLevelPadres(hijo_code)
+        results = get_last_level_padres(hijo_code)
         return {"total": len(results), "results": results}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error interno al obtener los padres de último nivel.")
 
-
 @router.get("/estructura", dependencies=[Depends(AuthRequired)])
-def GetStructureAllHijos(
+def get_structure_all_hijos(
     codigo: str = Query(..., description="Código del artículo padre")
 ):
     try:
         logger.debug(f"/estructura llamado con codigo={codigo}")
 
-        results = GetAllHijos(codigo)
+        results = get_all_hijos(codigo)
 
         if results:
-            logger.debug(f"GetAllHijos devolvió {len(results)} nodo(s) raíz")
+            logger.debug(f"get_all_hijos devolvió {len(results)} nodo(s) raíz")
         else:
-            logger.debug(f"GetAllHijos devolvió None o lista vacía")
+            logger.debug(f"get_all_hijos devolvió None o lista vacía")
 
         return results
 
     except Exception as e:
-        logger.exception(f"ERROR en GetStructureAllHijos: {e}")
+        logger.exception(f"ERROR en get_structure_all_hijos: {e}")
         raise HTTPException(status_code=500, detail=f"Error interno al obtener todos los hijos: {str(e)}")

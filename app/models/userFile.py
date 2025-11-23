@@ -9,7 +9,10 @@ class FileStatus(enum.Enum):
     done = "done"
     cancelled = "cancelled"
 
-class userfile(Base):
+class UserFile(Base):
+    """
+    File entity uploaded and managed per user.
+    """
     __tablename__ = "userfiles"
 
     id = Column("Id", Integer, primary_key=True, index=True)

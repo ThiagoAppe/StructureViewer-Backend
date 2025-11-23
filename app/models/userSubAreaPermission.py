@@ -8,6 +8,9 @@ class PermissionLevelEnum(str, enum.Enum):
     write = "Write"
 
 class UserSubAreaPermission(Base):
+    """
+    Assigns a permission level for a user within a specific sub-department.
+    """
     __tablename__ = "usersubareapermissions"
 
     id = Column("Id", Integer, primary_key=True)

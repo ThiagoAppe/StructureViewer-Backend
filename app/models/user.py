@@ -4,6 +4,9 @@ from app.database import Base
 from app.models.role import user_roles
 
 class User(Base):
+    """
+    User model representing system users and their associations.
+    """
     __tablename__ = "users"
 
     id = Column("Id", Integer, primary_key=True, index=True)
@@ -15,8 +18,25 @@ class User(Base):
     hashed_password = Column("HashedPassword", String(255), nullable=False)
     last_token = Column("LastToken", String(255), nullable=True)
 
-    user_files = relationship("userfile", back_populates="user", cascade="all, delete-orphan")
-    sub_area_permissions = relationship("UserSubAreaPermission", back_populates="user")
+    user_files = relationship(
+        "UserFile",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
 
-    roles = relationship("Role", secondary=user_roles, back_populates="users")
-    permissions = relationship("Permission", secondary="userpermissions", back_populates="users")
+    sub_area_permissions = relationship(
+        "UserSubAreaPermission",
+        back_populates="user"
+    )
+
+    roles = relationship(
+        "Role",
+        secondary=user_roles,
+        back_populates="users"
+    )
+
+    permissions = relationship(
+        "Permission",
+        secondary="userpermissions",
+        back_populates="users"
+    )

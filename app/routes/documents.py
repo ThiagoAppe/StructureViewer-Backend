@@ -1,25 +1,34 @@
 import json
 from pathlib import Path
 from typing import List
+
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.schemas.documents import DocumentosSchema
-from ___loggin___.loggerConfig import GetLogger
-from app.database import GetDb
-from app.validation import AuthRequired
+from ___loggin___.logger import get_logger
+from app.database import get_db
+from app.validation import auth_required
 
-from app.services.documents.analize.analize import AnalyzeDocument
-from app.services.documents.documentHandler.documentHandler import SaveUploadedFile, ProcessDocumentFromCache
+from app.services.documents.analize.analize import analyze_document
+from app.services.documents.document_handler.document_handler import (
+    save_uploaded_file,
+    process_document_from_cache,
+)
 
-logger = GetLogger("Documents")
+logger = get_logger("documents")
 
-router = APIRouter(prefix="/Documents", tags=["Documents"])
+router = APIRouter(prefix="/documents", tags=["Documents"])
 
 
-@router.get("/", response_model=List[DocumentosSchema], dependencies=[Depends(AuthRequired)])
-def GetDocumentos(db: Session = Depends(GetDb)):
-    json_path = Path(__file__).resolve().parent.parent / "src" / "json" / "Documentos.json"
+@router.get("/", response_model=List[DocumentosSchema], dependencies=[Depends(auth_required)])
+def get_documentos(db: Session = Depends(get_db)):
+    """
+    Devuelve la lista de documentos configurados desde el JSON local.
+    """
+    json_path = (
+        Path(__file__).resolve().parent.parent / "src" / "json" / "Documentos.json"
+    )
 
     if not json_path.exists():
         logger.warning("Archivo Documentos.json no encontrado")
@@ -30,53 +39,56 @@ def GetDocumentos(db: Session = Depends(GetDb)):
             data = json.load(f)
             logger.info(f"{len(data)} registros cargados desde Documentos.json")
             return data
-    except Exception as e:
-        logger.error(f"Error al leer el JSON: {str(e)}")
+    except Exception as exc:
+        logger.error(f"Error al leer el JSON: {str(exc)}")
         return []
 
 
-@router.post("/Analyze", dependencies=[Depends(AuthRequired)])
-async def AnalyzePDF(
-    Uuid: str = Form(...),
-    Coords: str = Form(...),
-    Codigo: str = Form(...),  
-    db: Session = Depends(GetDb),
+@router.post("/analyze", dependencies=[Depends(auth_required)])
+async def analyze_pdf(
+    uuid: str = Form(...),
+    coords: str = Form(...),
+    codigo: str = Form(...),
+    db: Session = Depends(get_db),
 ):
     """
-    Analiza un archivo en ___cache___ usando su UUID.
-    Borra el archivo solo si el análisis fue exitoso.
+    Analiza un archivo desde cache utilizando su UUID.
+    Elimina el archivo solo si el análisis es exitoso.
     """
     try:
-        CoordsDict = json.loads(Coords)
+        coords_dict = json.loads(coords)
     except json.JSONDecodeError:
         return {"success": False, "detail": "Invalid coordinates format"}
 
-    async def ProcessCallback(FileBytes):
-        return await AnalyzeDocument(FileBytes, CoordsDict, Codigo, db)
+    async def process_callback(file_bytes):
+        return await analyze_document(file_bytes, coords_dict, codigo, db)
 
-    def DeleteCondition(Result):
-        return Result.get("success", False)
+    def delete_condition(result):
+        return result.get("success", False)
 
-    return await ProcessDocumentFromCache(
-        Uuid=Uuid,
-        DbSession=db,
-        ProcessCallback=ProcessCallback,
-        DeleteCondition=DeleteCondition
+    return await process_document_from_cache(
+        uuid=uuid,
+        db_session=db,
+        process_callback=process_callback,
+        delete_condition=delete_condition,
     )
 
-@router.post("/DocumentHandler", dependencies=[Depends(AuthRequired)])
-async def HandleDocument(
+
+@router.post("/document-handler", dependencies=[Depends(auth_required)])
+async def handle_document(
     file: UploadFile = File(...),
-    db: Session = Depends(GetDb),
-    payload: dict = Depends(AuthRequired),
+    db: Session = Depends(get_db),
+    payload: dict = Depends(auth_required),
 ):
+    """
+    Guarda un archivo subido y registra la metadata.
+    """
     user_id = payload["id"]
-    file_info = await SaveUploadedFile(file, db, user_id)
+    file_info = await save_uploaded_file(file, db, user_id)
 
     filtered_info = {
         "file_name": file_info.file_name,
         "uuid": file_info.file_uuid,
-        #"Status": file_info.Status,
     }
 
     return {"status": "ok", "fileinfo": filtered_info}

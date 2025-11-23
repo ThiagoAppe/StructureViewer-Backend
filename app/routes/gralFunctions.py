@@ -1,12 +1,10 @@
 import json
 from pathlib import Path
 from typing import List
-from fastapi import APIRouter, Depends
-from fastapi import Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from ___loggin___.loggerConfig import GetLogger
-
+from ___loggin___.logger import GetLogger
 from app.database import GetDb
 from app.validation import AuthRequired
 from app.schemas.gralFunctions import MainFunctions, InventarioMainFunctions
@@ -15,10 +13,12 @@ logger = GetLogger("GeneralFunctions")
 
 router = APIRouter(prefix="/GeneralFunctions", tags=["General Functions"])
 
+
 @router.get("/MainFunctions", response_model=List[MainFunctions], dependencies=[Depends(AuthRequired)])
-def getMainFunctions(request: Request, db: Session = Depends(GetDb)):
-    #logger.info(f"Cookies recibidas: {request.cookies}")
-    
+def get_main_functions(request: Request, db: Session = Depends(GetDb)):
+    """Return the list of main functions loaded from MainFunctions.json."""
+
+    # logger.info(f"Cookies recibidas: {request.cookies}")
 
     json_path = Path(__file__).resolve().parent.parent / "src" / "json" / "MainFunctions.json"
 
@@ -37,7 +37,9 @@ def getMainFunctions(request: Request, db: Session = Depends(GetDb)):
 
 
 @router.get("/InventarioMainFunctions", response_model=List[InventarioMainFunctions], dependencies=[Depends(AuthRequired)])
-def getInventarioMainFunctions(db: Session = Depends(GetDb)):
+def get_inventario_main_functions(db: Session = Depends(GetDb)):
+    """Return the list of inventory main functions loaded from InventarioMainFunctions.json."""
+
     json_path = Path(__file__).resolve().parent.parent / "src" / "json" / "InventarioMainFunctions.json"
 
     if not json_path.exists():

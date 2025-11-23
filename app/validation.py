@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from ___loggin___.loggerConfig import GetLogger
+from ___loggin___.logger import GetLogger
 from app.database import GetDb
 from app.crud.user import GetLastToken
 
@@ -19,7 +19,20 @@ if SECRET_KEY is None:
 
 Err_Token = "Err_Unauthorized"
 
-def ValidateToken(request: Request, db: Session = Depends(GetDb)):
+
+def validate_token(request: Request, db: Session = Depends(GetDb)):
+    """
+    Valida el token JWT recibido en las cookies.
+    
+    Verifica:
+    - Que exista un token.
+    - Que el token pueda decodificarse correctamente.
+    - Que contenga los campos requeridos.
+    - Que coincida con el último jti registrado en base de datos.
+    
+    Retorna el payload decodificado si el token es válido.
+    """
+
     #logger.debug("Entrando a ValidateToken")
 
     if request.method == "OPTIONS":
@@ -63,6 +76,12 @@ def ValidateToken(request: Request, db: Session = Depends(GetDb)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=Err_Token)
 
 
-def AuthRequired(payload=Depends(ValidateToken)):
+def auth_required(payload=Depends(validate_token)):
+    """
+    Dependencia que asegura que el token ha sido validado correctamente.
+    
+    Retorna el payload validado para uso en rutas protegidas.
+    """
+
     #logger.info(f"Validación de autenticación exitosa para usuario: {payload.get('id')}")
     return payload
