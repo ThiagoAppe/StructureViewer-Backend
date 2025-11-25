@@ -1,4 +1,4 @@
-from app.database import GetSIMDb
+from app.database import get_sim_db
 
 # Campos permitidos para buscar
 ORDERED_FIELDS = [
@@ -54,7 +54,7 @@ def search_articles(field: str, value: str, similar: bool = True, limit: int = 5
         print(query)
         print("🔹 Valor de búsqueda:", param_value)
 
-    with GetSIMDb() as conn:
+    with get_sim_db() as conn:
         cursor = conn.cursor()
         cursor.execute(query)
         columns = [col[0] for col in cursor.description]
@@ -92,7 +92,7 @@ def get_articles_data(art_codes: list[str]) -> dict:
     results = {}
     chunk_size = 1000
 
-    with GetSIMDb() as conn:
+    with get_sim_db() as conn:
         cursor = conn.cursor()
 
         for i in range(0, len(codes_upper), chunk_size):

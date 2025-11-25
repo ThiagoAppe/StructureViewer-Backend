@@ -10,10 +10,10 @@ from ___loggin___.logger import get_logger
 from app.database import get_db
 from app.validation import auth_required
 
-from app.services.documents.analize.analize import analyze_document
+from app.services.documents.analize.analize import AnalyzeDocument
 from app.services.documents.document_handler.document_handler import (
-    save_uploaded_file,
-    process_document_from_cache,
+    SaveUploadedFile,
+    ProcessDocumentFromCache as process_document_from_cache,
 )
 
 logger = get_logger("documents")
@@ -61,7 +61,7 @@ async def analyze_pdf(
         return {"success": False, "detail": "Invalid coordinates format"}
 
     async def process_callback(file_bytes):
-        return await analyze_document(file_bytes, coords_dict, codigo, db)
+        return await AnalyzeDocument(file_bytes, coords_dict, codigo, db)
 
     def delete_condition(result):
         return result.get("success", False)
@@ -84,7 +84,7 @@ async def handle_document(
     Guarda un archivo subido y registra la metadata.
     """
     user_id = payload["id"]
-    file_info = await save_uploaded_file(file, db, user_id)
+    file_info = await SaveUploadedFile(file, db, user_id)
 
     filtered_info = {
         "file_name": file_info.file_name,

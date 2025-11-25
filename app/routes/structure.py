@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, HTTPException, Depends
 from app.services.SIMReader.estructura import get_hijos, get_padres, get_last_level_padres, get_all_hijos
-from app.validation import AuthRequired
+from app.validation import auth_required
 
 import logging
 
@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/GetHijos", dependencies=[Depends(AuthRequired)])
+@router.get("/GetHijos", dependencies=[Depends(auth_required)])
 def get_structure_hijos(
     padre_code: str = Query(..., description="Código del artículo padre (est_padre)"),
 ):
@@ -25,7 +25,7 @@ def get_structure_hijos(
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno al obtener los artículos hijos.")
     
-@router.get("/GetPadres", dependencies=[Depends(AuthRequired)])
+@router.get("/GetPadres", dependencies=[Depends(auth_required)])
 def get_structure_padres(
     hijo_code: str = Query(..., description="Código del artículo hijo (est_hijo)"),
 ):
@@ -42,7 +42,7 @@ def get_structure_padres(
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno al obtener los artículos padres.")
     
-@router.get("/GetLastLevelPadres", dependencies=[Depends(AuthRequired)])
+@router.get("/GetLastLevelPadres", dependencies=[Depends(auth_required)])
 def get_structure_last_level_padres(
     hijo_code: str = Query(..., description="Código del artículo hijo")
 ):
@@ -56,7 +56,7 @@ def get_structure_last_level_padres(
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno al obtener los padres de último nivel.")
 
-@router.get("/estructura", dependencies=[Depends(AuthRequired)])
+@router.get("/estructura", dependencies=[Depends(auth_required)])
 def get_structure_all_hijos(
     codigo: str = Query(..., description="Código del artículo padre")
 ):

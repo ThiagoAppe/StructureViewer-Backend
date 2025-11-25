@@ -5,16 +5,17 @@ from passlib.context import CryptContext
 from app.models.user import User
 from app.schemas.user import UserCreate
 
-# Importar tu módulo de logs
+# Logs
 from ___loggin___.logger import get_category_logger
+from ___loggin___.config import LogCategory
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Logger específico para usuarios
-log = get_category_logger("user")
+# Logger específico para usuarios (usando el enum correcto)
+log = get_category_logger(LogCategory.USER)
+
 
 def get_users(db: Session):
-    # Devuelve todos los usuarios
     try:
         users = db.query(User).all()
         log.info("get_users ejecutado correctamente")
@@ -23,8 +24,8 @@ def get_users(db: Session):
         log.error(f"Error en get_users: {e}")
         raise
 
+
 def update_last_token(db: Session, user_id: int, token_id: str) -> bool:
-    # Actualiza el último token de un usuario
     try:
         user_db = db.query(User).filter(User.id == user_id).first()
         if user_db:
@@ -40,8 +41,8 @@ def update_last_token(db: Session, user_id: int, token_id: str) -> bool:
         log.error(f"Error en update_last_token: {e}")
         raise
 
+
 def get_last_token(db: Session, user_id: int) -> Optional[str]:
-    # Obtiene el último token guardado
     try:
         user_db = db.query(User).filter(User.id == user_id).first()
         token = user_db.last_token if user_db else None
@@ -51,8 +52,8 @@ def get_last_token(db: Session, user_id: int) -> Optional[str]:
         log.error(f"Error en get_last_token: {e}")
         raise
 
+
 def create_user(db: Session, usuario: UserCreate):
-    # Hashear la contraseña antes de guardar
     try:
         hashed_password = pwd_context.hash(usuario.password)
         db_user = User(
@@ -73,8 +74,8 @@ def create_user(db: Session, usuario: UserCreate):
         log.error(f"Error en create_user: {e}")
         raise
 
+
 def validate_user(db: Session, username: str, password: str):
-    # Valida credenciales del usuario
     try:
         user = db.query(User).filter(User.user_name == username).first()
         if not user:

@@ -1,7 +1,7 @@
 from typing import Dict, List, Any
 from fastapi import HTTPException
 from collections import Counter
-from app.services.SIMReader.estructura import GetAllHijos
+from app.services.SIMReader.estructura import get_all_hijos
 
 
 def FlattenStructure(structure: list) -> List[str]:
@@ -41,7 +41,7 @@ async def CompareExtractedCodesWithStructure(
     """
     try:
         # Obtener estructura real desde la base
-        structure_data = GetAllHijos(MainCode)
+        structure_data = get_all_hijos(MainCode)
 
         # Aplanar la estructura para incluir todos los hijos
         structure_list = FlattenStructure(structure_data)

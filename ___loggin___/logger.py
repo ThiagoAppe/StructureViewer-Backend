@@ -4,14 +4,16 @@ from .config import (
     log_level,
     log_console,
     log_file,
-    log_json
+    log_json,
+    LogArea,
+    LogCategory
 )
 
 from .formatters import ColorFormatter, JsonFormatter
 from .handlers import create_file_handler, create_console_handler
 
 
-def get_logger(name: str = "app", area: str = "general") -> logging.Logger:
+def get_logger(name: str = "app", area: LogArea = LogArea.GENERAL) -> logging.Logger:
     """
     Create and return a configured logger instance.
 
@@ -41,7 +43,7 @@ def get_logger(name: str = "app", area: str = "general") -> logging.Logger:
         )
 
         if log_file:
-            file_handler = create_file_handler(area, file_formatter)
+            file_handler = create_file_handler(area.value, file_formatter)
             if file_handler:
                 logger.addHandler(file_handler)
 
@@ -52,7 +54,7 @@ def get_logger(name: str = "app", area: str = "general") -> logging.Logger:
     return logger
 
 
-def get_category_logger(category: str) -> logging.Logger:
+def get_category_logger(category: LogCategory) -> logging.Logger:
     """
     Return a logger associated with a specific logical category.
 
@@ -62,4 +64,4 @@ def get_category_logger(category: str) -> logging.Logger:
     Returns:
         logging.Logger: Logger configured for the given category.
     """
-    return get_logger(name=category, area=category)
+    return get_logger(name=category.value, area=LogArea.GENERAL)

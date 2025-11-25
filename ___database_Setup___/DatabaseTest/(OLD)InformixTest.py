@@ -90,7 +90,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def GetDb():
+def get_db():
     """
     Retorna la sesión de SQLAlchemy para MySQL.
     Usar con Depends en FastAPI o directamente.

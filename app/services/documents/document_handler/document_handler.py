@@ -11,21 +11,23 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.crud.userFile import create_user_file, delete_user_file
-from app.models.userFile import userfile
+from app.models.userFile import UserFile
 from app.database import SessionLocal
-from ___loggin___.loggerConfig import GetLogger
 
-logger = GetLogger(name="watchdog", area="file_cleanup")
+from ___loggin___.config import LogCategory
+from ___loggin___.logger import get_category_logger
+
+logger = get_category_logger(LogCategory.USER_FILE)
 
 EXPIRATION_HOURS = 24
 CACHE_FOLDER_NAME = "___cache___"
 
 
-async def SaveUploadedFile(file, db: Session, user_id: int) -> userfile:
+async def SaveUploadedFile(file, db: Session, user_id: int) -> UserFile:
     """
     Guarda el archivo en ___cache___ con un UUID como nombre físico.
     Luego crea un registro en DB con el nombre original y el UUID.
-    Devuelve el objeto userfile creado.
+    Devuelve el objeto UserFile creado.
     """
     
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
@@ -63,8 +65,8 @@ def cleanExpiredFiles():
         cache_dir = os.path.join(base_dir, CACHE_FOLDER_NAME)
 
         expired_files = (
-            db.query(userfile)
-            .filter(userfile.last_access < expiration_threshold)
+            db.query(UserFile)
+            .filter(UserFile.last_access < expiration_threshold)
             .all()
         )
 
@@ -119,7 +121,7 @@ async def ProcessDocumentFromCache(Uuid: str, DbSession, ProcessCallback, Delete
     FilePath = Matches[0]
 
     try:
-        file_record = DbSession.query(userfile).filter(userfile.file_uuid == Uuid).first()
+        file_record = DbSession.query(UserFile).filter(UserFile.file_uuid == Uuid).first()
         if file_record:
             file_record.last_access = datetime.now(timezone.utc)
             DbSession.commit()

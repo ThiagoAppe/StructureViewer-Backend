@@ -2,99 +2,60 @@ import time
 from typing import List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from app.database import GetSIMDb
-from app.services.SIMReader.articulos import GetArticlesData
+from app.database import get_sim_db
+from app.services.SIMReader.articulos import get_articles_data
 
-
-# Configuración: máximo de hilos
+# Máximo de hilos
 MAX_THREADS = 5
 
 
 def get_hijos(padre_code: str):
-    """
-    Ejecuta una consulta sobre manufact.est para obtener los artículos hijos
-    asociados a un artículo padre específico, filtrando por est_fechas IS NULL.
-
-    Retorna una lista de diccionarios conteniendo est_hijo, est_cantid y est_numord.
-    """
     debug = False
-
     padre_code_upper = padre_code.upper().strip()
 
     query = f"""
     SELECT est_hijo, est_cantid, est_numord
     FROM manufact.est
     WHERE UPPER(TRIM(est_padre)) = '{padre_code_upper}'
-      AND est_fechas IS NULL
+        AND est_fechas IS NULL
     ORDER BY est_numord ASC
     """
 
-    if debug:
-        print("🔹 Query a ejecutar:")
-        print(query)
-
     results = []
-    with GetSIMDb() as conn:
+    with get_sim_db() as conn:
         cursor = conn.cursor()
         cursor.execute(query)
         columns = [col[0] for col in cursor.description]
         for row in cursor.fetchall():
-            result = dict(zip(columns, row))
-            results.append(result)
-
-    if debug:
-        print("🔹 Resultados obtenidos:", len(results))
-        for r in results[:5]:
-            print(r)
+            results.append(dict(zip(columns, row)))
 
     return results
 
 
 def get_padres(hijo_code: str):
-    """
-    Ejecuta una consulta sobre manufact.est para obtener los artículos padres
-    asociados a un artículo hijo específico, filtrando por est_fechas IS NULL.
-
-    Retorna una lista de diccionarios que contienen est_padre.
-    """
     debug = False
-
     hijo_code_upper = hijo_code.upper().strip()
 
     query = f"""
     SELECT est_padre
     FROM manufact.est
     WHERE UPPER(TRIM(est_hijo)) = '{hijo_code_upper}'
-      AND est_fechas IS NULL
+        AND est_fechas IS NULL
     """
 
-    if debug:
-        print("🔹 Query a ejecutar:")
-        print(query)
-
     results = []
-    with GetSIMDb() as conn:
+    with get_sim_db() as conn:
         cursor = conn.cursor()
         cursor.execute(query)
         columns = [col[0] for col in cursor.description]
-        for row in cursor.fetchall():
-            result = {columns[0]: row[0].strip() if row[0] else None}
-            results.append(result)
 
-    if debug:
-        print("🔹 Resultados obtenidos:", len(results))
-        for r in results[:5]:
-            print(r)
+        for row in cursor.fetchall():
+            results.append({columns[0]: row[0].strip() if row[0] else None})
 
     return results
 
 
 def get_last_level_padres(hijo_code: str):
-    """
-    Obtiene de forma optimizada los padres de último nivel de un artículo hijo,
-    evitando traer toda la tabla est en memoria y resolviendo mediante
-    navegación controlada en profundidad.
-    """
     debug = False
     hijo_code = hijo_code.strip()
 
@@ -102,35 +63,141 @@ def get_last_level_padres(hijo_code: str):
     stack_fetch = [hijo_code]
     fetched = set()
 
-    with GetSIMDb() as conn:
+    with get_sim_db() as conn:
         cursor = conn.cursor()
 
         while stack_fetch:
             current = stack_fetch.pop()
+
             if current in fetched:
                 continue
-
             fetched.add(current)
 
             query = f"""
-            SELECT est_padre
-            FROM manufact.est
-            WHERE UPPER(TRIM(est_hijo)) = '{current.upper()}'
-              AND est_fechas IS NULL
+                SELECT est_padre, est_hijo
+                FROM manufact.est
+                WHERE est_fechas IS NULL
+                    AND est_hijo = '{current}'
             """
-
-            if debug:
-                print("🔹 Query a ejecutar:")
-                print(query)
 
             cursor.execute(query)
             rows = cursor.fetchall()
+            relaciones.extend(rows)
 
-            if rows:
-                for row in rows:
-                    padre = row[0].strip() if row[0] else None
-                    if padre:
-                        relaciones.append({"hijo": current, "padre": padre})
-                        stack_fetch.append(padre)
+            for padre, hijo in rows:
+                if padre:
+                    stack_fetch.append(padre.strip())
 
-    return relaciones
+    hijo_to_padres = {}
+    for padre, hijo in relaciones:
+        hijo_to_padres.setdefault(hijo.strip(), []).append(padre.strip())
+
+    stack = [hijo_code]
+    visited = set()
+    last_level_parents = set()
+
+    while stack:
+        codigo = stack.pop()
+        if codigo in visited:
+            continue
+        visited.add(codigo)
+
+        padres = hijo_to_padres.get(codigo)
+        if not padres:
+            last_level_parents.add(codigo)
+        else:
+            stack.extend(padres)
+
+    return list(last_level_parents)
+
+
+def get_all_hijos(padre_code: str) -> List[Dict[str, Any]]:
+    debug = True
+    visited = set()
+    all_codes = set()
+    query_count = 0
+    start_global = time.time()
+
+    def fmt_qty(val):
+        if val is None:
+            return ""
+        try:
+            num = float(val)
+            return str(int(num)) if num.is_integer() else str(num)
+        except (ValueError, TypeError):
+            return str(val)
+
+    def get_hijos_tree(code: str, level: int, cursor):
+        nonlocal query_count
+
+        if code in visited:
+            return None
+
+        visited.add(code)
+        all_codes.add(code)
+
+        node = {
+            "codigo": code,
+            "cantidad": "",
+            "descripcion": "",
+            "letra_cambio": "",
+            "level": level,
+            "hijos": []
+        }
+
+        start_time = time.time()
+
+        cursor.execute(
+            """
+            SELECT TRIM(est_hijo), est_cantid
+            FROM manufact.est
+            WHERE est_padre = ? AND est_fechas IS NULL
+            """,
+            (code,)
+        )
+        query_count += 1
+        hijos_rows = cursor.fetchall()
+
+        for row in hijos_rows:
+            hijo_code = row[0].strip() if row[0] else None
+            hijo_cant = fmt_qty(row[1]) if len(row) > 1 else ""
+
+            if hijo_code:
+                child_node = get_hijos_tree(hijo_code, level + 1, cursor)
+                if child_node:
+                    child_node["cantidad"] = hijo_cant
+                    node["hijos"].append(child_node)
+
+        return node
+
+    with get_sim_db() as conn:
+        cursor = conn.cursor()
+        tree = get_hijos_tree(padre_code.strip(), 0, cursor)
+
+    if not tree:
+        return []
+
+    start_articles = time.time()
+    articles_info = get_articles_data(list(all_codes))
+
+    if isinstance(articles_info, list):
+        articles_dict = {
+            a.get("art_articu"): a
+            for a in articles_info
+            if a and a.get("art_articu")
+        }
+    else:
+        articles_dict = articles_info
+
+    def enrich_tree(node):
+        info = articles_dict.get(node["codigo"])
+        if info:
+            node["descripcion"] = info.get("art_descr1", "") or info.get("descripcion", "")
+            node["letra_cambio"] = info.get("art_cambio", "") or info.get("letra_cambio", "")
+
+        for hijo in node["hijos"]:
+            enrich_tree(hijo)
+
+    enrich_tree(tree)
+
+    return [tree]

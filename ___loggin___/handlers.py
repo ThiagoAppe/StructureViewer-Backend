@@ -3,12 +3,11 @@ import logging
 from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 
 from .config import (
-    LogFolder,
-    LOG_FILE,
-    LOG_ROTATE_DAILY,
-    LOG_ROTATE_SIZE,
-    LOG_DAILY_BACKUP,
-    LOG_SIZE_BACKUP,
+    log_folder,
+    log_file,
+    log_rotate_daily,
+    log_rotate_size,
+    log_size_backup,
 )
 
 
@@ -23,23 +22,23 @@ def create_file_handler(area: str, formatter):
     Returns:
         logging.Handler | None: Configured handler or None if file logging is disabled.
     """
-    if not LOG_FILE:
+    if not log_file:
         return None
 
-    path = os.path.join(LogFolder, f"{area}.log")
+    path = os.path.join(log_folder, f"{area}.log")
 
-    if LOG_ROTATE_DAILY:
+    if log_rotate_daily:
         handler = TimedRotatingFileHandler(
             path,
             when="midnight",
-            backupCount=LOG_DAILY_BACKUP,
+            backupCount=log_rotate_daily,
             encoding="utf-8"
         )
     else:
         handler = RotatingFileHandler(
             path,
-            maxBytes=LOG_ROTATE_SIZE,
-            backupCount=LOG_SIZE_BACKUP,
+            maxBytes=log_rotate_size,
+            backupCount=log_size_backup,
             encoding="utf-8"
         )
 

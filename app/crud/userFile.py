@@ -1,14 +1,17 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from app.models.userFile import userfile, FileStatus
-from ___loggin___.logger import GetCategoryLogger
+from app.models.userFile import UserFile, FileStatus
+from ___loggin___.config import LogCategory
+from ___loggin___.logger import get_category_logger
 
-log = GetCategoryLogger("userfile")
+
+log = get_category_logger(LogCategory.USER_FILE)
 
 
-def create_user_file(db: Session, user_id: int, file_name: str, file_uuid: str) -> userfile:
+
+def create_user_file(db: Session, user_id: int, file_name: str, file_uuid: str) -> UserFile:
     try:
-        new_file = userfile(
+        new_file = UserFile(
             user_id=user_id,
             file_name=file_name,
             file_uuid=file_uuid,
@@ -27,9 +30,9 @@ def create_user_file(db: Session, user_id: int, file_name: str, file_uuid: str) 
         raise
 
 
-def get_user_file(db: Session, file_id: int) -> userfile | None:
+def get_user_file(db: Session, file_id: int) -> UserFile | None:
     try:
-        file = db.query(userfile).filter(userfile.id == file_id, userfile.is_deleted == False).first()
+        file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == False).first()
         if file:
             file.last_access = datetime.now(timezone.utc)
             db.commit()
@@ -40,9 +43,9 @@ def get_user_file(db: Session, file_id: int) -> userfile | None:
         raise
 
 
-def get_user_file_by_uuid(db: Session, file_uuid: str) -> userfile | None:
+def get_user_file_by_uuid(db: Session, file_uuid: str) -> UserFile | None:
     try:
-        file = db.query(userfile).filter(userfile.file_uuid == file_uuid, userfile.is_deleted == False).first()
+        file = db.query(UserFile).filter(UserFile.file_uuid == file_uuid, UserFile.is_deleted == False).first()
         if file:
             file.last_access = datetime.now(timezone.utc)
             db.commit()
@@ -53,9 +56,9 @@ def get_user_file_by_uuid(db: Session, file_uuid: str) -> userfile | None:
         raise
 
 
-def get_user_files_by_user(db: Session, user_id: int) -> list[userfile]:
+def get_user_files_by_user(db: Session, user_id: int) -> list[UserFile]:
     try:
-        files = db.query(userfile).filter(userfile.user_id == user_id, userfile.is_deleted == False).all()
+        files = db.query(UserFile).filter(UserFile.user_id == user_id, UserFile.is_deleted == False).all()
         log.info(f"Listado user_id={user_id}")
         return files
     except Exception as e:
@@ -63,9 +66,9 @@ def get_user_files_by_user(db: Session, user_id: int) -> list[userfile]:
         raise
 
 
-def update_file_status(db: Session, file_id: int, new_status: FileStatus) -> userfile | None:
+def update_file_status(db: Session, file_id: int, new_status: FileStatus) -> UserFile | None:
     try:
-        user_file = db.query(userfile).filter(userfile.id == file_id, userfile.is_deleted == False).first()
+        user_file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == False).first()
         if not user_file:
             log.warning(f"No encontrado file_id={file_id}")
             return None
@@ -100,7 +103,7 @@ def update_file_status(db: Session, file_id: int, new_status: FileStatus) -> use
 
 def delete_user_file(db: Session, file_id) -> bool:
     try:
-        user_file = db.query(userfile).filter(userfile.id == file_id, userfile.is_deleted == False).first()
+        user_file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == False).first()
         if not user_file:
             log.warning(f"No encontrado file_id={file_id}")
             return False
@@ -116,7 +119,7 @@ def delete_user_file(db: Session, file_id) -> bool:
 
 def restore_user_file(db: Session, file_id: int) -> bool:
     try:
-        user_file = db.query(userfile).filter(userfile.id == file_id, userfile.is_deleted == True).first()
+        user_file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == True).first()
         if not user_file:
             log.warning(f"No restaurable file_id={file_id}")
             return False
@@ -132,10 +135,10 @@ def restore_user_file(db: Session, file_id: int) -> bool:
 
 def user_owns_file(db: Session, user_id: int, file_id: int) -> bool:
     try:
-        file = db.query(userfile).filter(
-            userfile.id == file_id,
-            userfile.user_id == user_id,
-            userfile.is_deleted == False
+        file = db.query(UserFile).filter(
+            UserFile.id == file_id,
+            UserFile.user_id == user_id,
+            UserFile.is_deleted == False
         ).first()
         result = file is not None
         log.info(f"Verificación permiso user_id={user_id} file_id={file_id} -> {result}")

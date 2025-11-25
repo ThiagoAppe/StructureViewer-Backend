@@ -4,11 +4,13 @@ from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from ___loggin___.logger import GetLogger
-from app.database import GetDb
-from app.crud.user import GetLastToken
+from ___loggin___.logger import get_category_logger
+from ___loggin___.config import LogCategory
 
-logger = GetLogger("auth")
+from app.database import get_db
+from app.crud.user import get_last_token
+
+logger = get_category_logger(LogCategory.AUTH)
 
 load_dotenv()
 
@@ -20,7 +22,7 @@ if SECRET_KEY is None:
 Err_Token = "Err_Unauthorized"
 
 
-def validate_token(request: Request, db: Session = Depends(GetDb)):
+def validate_token(request: Request, db: Session = Depends(get_db)):
     """
     Valida el token JWT recibido en las cookies.
     
@@ -57,7 +59,7 @@ def validate_token(request: Request, db: Session = Depends(GetDb)):
 
         #logger.debug(f"Payload decodificado correctamente: id={user_id}, jti={token_jti}")
 
-        last_jti = GetLastToken(db, user_id)
+        last_jti = get_last_token(db, user_id)
         #logger.debug(f"Último jti almacenado: {last_jti}")
 
         if last_jti != token_jti:

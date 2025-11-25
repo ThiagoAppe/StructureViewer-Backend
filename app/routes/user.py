@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.database import GetDb
+from app.database import get_db
 from app.crud.user import get_users, create_user, validate_user, update_last_token, get_last_token
-from app.validation import validate_token, AuthRequired
+from app.validation import validate_token, auth_required
 from app.models.user import User
 
 load_dotenv()
@@ -62,7 +62,7 @@ def generate_token(db: Session, user: User, exp_minutes: int = 600):
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")  # type: ignore
 
 @router.get("/me")
-def get_actual_user(payload=Depends(AuthRequired), db: Session = Depends(GetDb)):
+def get_actual_user(payload=Depends(auth_required), db: Session = Depends(get_db)):
     """
     Devuelve la información básica del usuario autenticado.
 
@@ -92,7 +92,7 @@ def get_actual_user(payload=Depends(AuthRequired), db: Session = Depends(GetDb))
     }
 
 @router.post("/login")
-def login(data: LoginData, response: Response, db: Session = Depends(GetDb)):
+def login(data: LoginData, response: Response, db: Session = Depends(get_db)):
     """
     Valida credenciales y crea una sesión.
 
