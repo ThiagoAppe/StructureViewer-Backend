@@ -1,13 +1,15 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, text
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Boolean, text
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
+
 
 class FileStatus(enum.Enum):
     pending = "pending"
     processing = "processing"
     done = "done"
     cancelled = "cancelled"
+
 
 class UserFile(Base):
     """
@@ -22,5 +24,7 @@ class UserFile(Base):
     status = Column("Status", Enum(FileStatus), default=FileStatus.pending, nullable=False)
     upload_date = Column("UploadDate", DateTime, server_default=text("CURRENT_TIMESTAMP"))
     last_access = Column("LastAccess", DateTime, server_default=text("CURRENT_TIMESTAMP"))
+
+    is_deleted = Column("IsDeleted", Boolean, nullable=False, server_default=text("0"))
 
     user = relationship("User", back_populates="user_files")

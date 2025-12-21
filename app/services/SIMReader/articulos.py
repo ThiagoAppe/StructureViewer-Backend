@@ -1,33 +1,26 @@
 from app.database import get_sim_db
+from ___loggin___.logger import get_logger, LogArea, LogCategory
 
-# Campos permitidos para buscar
+logger = get_logger(LogArea.SIM, LogCategory.SIMREADER)
+
 ORDERED_FIELDS = [
     "art_articu",
     "art_descr1",
     "art_cambio",
-    "art_famil1",
-    "art_famil2",
-    "art_famil3",
-    "art_famil4",
-    "art_tipoar",
+    # "art_famil1",
+    # "art_famil2",
+    # "art_famil3",
+    # "art_famil4",
+    # "art_tipoar",
 ]
 
-
 def search_articles(field: str, value: str, similar: bool = True, limit: int = 50, offset: int = 0):
-    """
-    Ejecuta una búsqueda de artículos en la tabla 'manufact.art' filtrando por un campo específico.
-    
-    Permite búsquedas parciales (similar=True) o exactas.  
-    Devuelve únicamente el código del artículo y la descripción.  
-    Retorna una lista de diccionarios:  
-    [
-        {"art_articu": "...", "art_descr1": "..."},
-        ...
-    ]
-    """
     debug = False
 
+    logger.info(f"search_articles iniciado con field='{field}', value='{value}', similar={similar}, limit={limit}, offset={offset}")
+
     if field not in ORDERED_FIELDS:
+        logger.error(f"Campo inválido recibido en search_articles: {field}")
         raise ValueError(f"Campo '{field}' no está permitido para la búsqueda.")
 
     param_value = value.upper()
@@ -50,40 +43,36 @@ def search_articles(field: str, value: str, similar: bool = True, limit: int = 5
         """
 
     if debug:
-        print("🔹 Query a ejecutar:")
-        print(query)
-        print("🔹 Valor de búsqueda:", param_value)
+        logger.debug("Query a ejecutar:")
+        logger.debug(query)
+        logger.debug(f"Valor de búsqueda: {param_value}")
 
     with get_sim_db() as conn:
         cursor = conn.cursor()
         cursor.execute(query)
         columns = [col[0] for col in cursor.description]
-        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        results = [dict(zip(columns, row)) for row in rows]
+
+    logger.info(f"search_articles encontró {len(results)} resultados para value='{value}' en field='{field}'")
+
+    if results:
+        logger.info("Primeros resultados obtenidos:")
+        for r in results[:10]:
+            logger.info(str(r))
 
     if debug:
-        print("🔹 Resultados encontrados:", len(results))
+        logger.debug(f"Resultados encontrados: {len(results)}")
         for r in results[:5]:
-            print(r)
+            logger.debug(str(r))
 
     return results
 
-
 def get_articles_data(art_codes: list[str]) -> dict:
-    """
-    Obtiene datos completos de artículos especificados por código.
-    
-    Retorna un diccionario indexado por código de artículo:
-    {
-        "02429-01": { campo: valor, ... },
-        "11624": { campo: valor, ... },
-        ...
-    }
-    
-    Realiza la consulta en chunks para evitar límites de IN (...)
-    """
-    debug = True
+    logger.info(f"get_articles_data iniciado con {len(art_codes)} códigos recibidos")
 
     if not art_codes:
+        logger.warning("get_articles_data llamado con lista vacía")
         return {}
 
     codes_upper = [code.upper().strip() for code in art_codes]
@@ -104,14 +93,19 @@ def get_articles_data(art_codes: list[str]) -> dict:
                 WHERE UPPER(TRIM(art_articu)) IN ({placeholders})
             """
 
-            if debug:
-                print(f"🔹 Ejecutando chunk {i // chunk_size + 1}: {len(chunk)} códigos")
-                print(query)
+            logger.debug(f"Ejecutando chunk {i // chunk_size + 1}: {len(chunk)} códigos")
+            logger.debug(query)
 
             cursor.execute(query, chunk)
             columns = [col[0] for col in cursor.description]
+            rows = cursor.fetchall()
 
-            for row in cursor.fetchall():
+            if rows:
+                logger.info(f"Chunk {i // chunk_size + 1} devolvió {len(rows)} filas")
+                for r in rows[:10]:
+                    logger.debug(str(dict(zip(columns, r))))
+
+            for row in rows:
                 result = {}
                 for field in ORDERED_FIELDS:
                     value = row[columns.index(field)]
@@ -119,5 +113,10 @@ def get_articles_data(art_codes: list[str]) -> dict:
 
                 art_code = result["art_articu"]
                 results[art_code] = result
+
+    logger.info(f"get_articles_data finalizado. Total artículos procesados: {len(results)}")
+
+    for k in list(results.keys())[:10]:
+        logger.debug(f"{k}: {results[k]}")
 
     return results

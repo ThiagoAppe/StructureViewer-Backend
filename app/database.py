@@ -1,10 +1,15 @@
 import os
 import pyodbc
 import re
+import time
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
+from ___loggin___.logger import get_logger, LogArea, LogCategory
+
+logger = get_logger(LogArea.DATABASE, LogCategory.SYSTEM)
+
 
 # =========================
 # Cargar variables de entorno
@@ -63,6 +68,8 @@ def get_sim_db():
             data = cursor.fetchall()
     """
     conn = None
+    start_time = time.perf_counter()
+
     try:
         conn_str = (
             f"DSN={os.getenv('DB_INFORMIX_DSN', 'manufact64')};"
@@ -71,14 +78,20 @@ def get_sim_db():
         )
 
         conn = pyodbc.connect(conn_str)
+
+        elapsed = (time.perf_counter() - start_time) * 1000
+        logger.info(f"Conexión establecida a Informix en {elapsed:.2f} ms")
+
         yield ReadOnlyConnection(conn)
 
     except pyodbc.Error as e:
-        print(f"❌ Error al conectar con Informix (DSN=manufact64): {e}")
+        logger.error(f"Error al conectar con Informix: {e}")
         raise
+
     finally:
         if conn:
             conn.close()
+            logger.info("Conexión Informix cerrada")
 
 # =========================
 # Clase de conexión solo lectura
@@ -96,9 +109,11 @@ class ReadOnlyConnection:
     def close(self):
         self._conn.close()
 
+
 class ReadOnlyCursor:
     """
     Cursor protegido para permitir únicamente SELECT.
+    Delegará cualquier atributo no definido hacia el cursor real.
     """
     WRITE_OPERATIONS = re.compile(
         r"^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE|GRANT|REVOKE)",
@@ -109,15 +124,41 @@ class ReadOnlyCursor:
         self._cursor = cursor
 
     def execute(self, query, *args, **kwargs):
+        start_time = time.perf_counter()
+
         if self.WRITE_OPERATIONS.match(query):
+            logger.warning("Intento de operación prohibida detectado")
             raise PermissionError("Operación de escritura no permitida en modo solo lectura.")
-        return self._cursor.execute(query, *args, **kwargs)
+
+        result = self._cursor.execute(query, *args, **kwargs)
+
+        elapsed = (time.perf_counter() - start_time) * 1000
+        logger.debug(f"Query ejecutada en {elapsed:.2f} ms")
+
+        return result
 
     def fetchall(self):
-        return self._cursor.fetchall()
+        start = time.perf_counter()
+        rows = self._cursor.fetchall()
+        elapsed = (time.perf_counter() - start) * 1000
+        logger.debug(f"ReadOnlyCursor completado en {elapsed:.2f} ms, filas: {len(rows)}, Devolvió:")
+        for row in enumerate(rows):
+            logger.debug(row)
+        return rows
 
     def fetchone(self):
-        return self._cursor.fetchone()
+        start = time.perf_counter()
+        row = self._cursor.fetchone()
+        elapsed = (time.perf_counter() - start) * 1000
+        logger.debug(f"fetchone completado en {elapsed:.2f} ms")
+        return row
 
     def close(self):
-        self._cursor.close()
+        return self._cursor.close()
+
+    def __getattr__(self, name):
+        """
+        Delegación automática a `_cursor` para atributos no definidos,
+        incluyendo `.description`, `.rowcount`, etc.
+        """
+        return getattr(self._cursor, name)

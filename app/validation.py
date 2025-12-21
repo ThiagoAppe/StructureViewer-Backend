@@ -4,13 +4,13 @@ from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from ___loggin___.logger import get_category_logger
-from ___loggin___.config import LogCategory
+from ___loggin___.logger import get_logger
+from ___loggin___.config import LogArea, LogCategory
 
 from app.database import get_db
 from app.crud.user import get_last_token
 
-logger = get_category_logger(LogCategory.AUTH)
+logger = get_logger(LogArea.AUTH, LogCategory.AUTH)
 
 load_dotenv()
 

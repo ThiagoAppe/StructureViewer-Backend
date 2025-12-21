@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.schemas.documents import DocumentosSchema
-from ___loggin___.logger import get_logger
+from ___loggin___.logger import get_logger, LogArea, LogCategory
 from app.database import get_db
 from app.validation import auth_required
 
@@ -16,7 +16,7 @@ from app.services.documents.document_handler.document_handler import (
     ProcessDocumentFromCache as process_document_from_cache,
 )
 
-logger = get_logger("documents")
+logger = get_logger(LogArea.SERVICES, LogCategory.FILES)
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -55,23 +55,48 @@ async def analyze_pdf(
     Analiza un archivo desde cache utilizando su UUID.
     Elimina el archivo solo si el análisis es exitoso.
     """
+    logger.info(f"Inicio de análisis de documento uuid={uuid}, codigo={codigo}")
+
     try:
         coords_dict = json.loads(coords)
-    except json.JSONDecodeError:
+        logger.debug(f"Coordenadas parseadas correctamente para uuid={uuid}")
+    except json.JSONDecodeError as exc:
+        logger.warning(
+            f"Formato inválido de coordenadas para uuid={uuid}: {coords}"
+        )
         return {"success": False, "detail": "Invalid coordinates format"}
 
     async def process_callback(file_bytes):
-        return await AnalyzeDocument(file_bytes, coords_dict, codigo, db)
+        logger.info(f"Ejecutando análisis para uuid={uuid}")
+        result = await AnalyzeDocument(file_bytes, coords_dict, codigo, db)
+        logger.info(
+            f"Resultado del análisis para uuid={uuid}: success={result.get('success')}"
+        )
+        return result
 
     def delete_condition(result):
-        return result.get("success", False)
+        should_delete = result.get("success", False)
+        if should_delete:
+            logger.info(f"El archivo uuid={uuid} será eliminado del cache")
+        else:
+            logger.warning(
+                f"El archivo uuid={uuid} NO será eliminado del cache (análisis fallido)"
+            )
+        return should_delete
 
-    return await process_document_from_cache(
-        uuid=uuid,
-        db_session=db,
-        process_callback=process_callback,
-        delete_condition=delete_condition,
-    )
+    try:
+        response = await process_document_from_cache(
+            uuid=uuid,
+            db_session=db,
+            process_callback=process_callback,
+            delete_condition=delete_condition,
+        )
+        logger.info(f"Proceso completo para uuid={uuid}")
+        return response
+    except Exception as exc:
+        logger.exception(f"Error inesperado durante el análisis de uuid={uuid}")
+        raise
+
 
 
 @router.post("/document-handler", dependencies=[Depends(auth_required)])

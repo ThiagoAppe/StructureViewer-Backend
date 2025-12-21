@@ -14,10 +14,10 @@ from app.crud.userFile import create_user_file, delete_user_file
 from app.models.userFile import UserFile
 from app.database import SessionLocal
 
-from ___loggin___.config import LogCategory
-from ___loggin___.logger import get_category_logger
+from ___loggin___.config import LogArea, LogCategory
+from ___loggin___.logger import get_logger
 
-logger = get_category_logger(LogCategory.USER_FILE)
+logger = get_logger(LogArea.SERVICES, LogCategory.FILES)
 
 EXPIRATION_HOURS = 24
 CACHE_FOLDER_NAME = "___cache___"
@@ -29,7 +29,7 @@ async def SaveUploadedFile(file, db: Session, user_id: int) -> UserFile:
     Luego crea un registro en DB con el nombre original y el UUID.
     Devuelve el objeto UserFile creado.
     """
-    
+
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
     cache_dir = os.path.join(base_dir, CACHE_FOLDER_NAME)
     os.makedirs(cache_dir, exist_ok=True)
@@ -49,13 +49,14 @@ async def SaveUploadedFile(file, db: Session, user_id: int) -> UserFile:
         file_uuid=file_uuid,
     )
 
+    logger.info(f"Archivo guardado en cache con uuid={file_uuid}")
+
     return user_file
 
 
 def cleanExpiredFiles():
     """
-    Función que elimina archivos y registros DB de archivos expirados.
-    Esta función crea su propia sesión DB.
+    Elimina archivos y registros DB de archivos expirados.
     """
     db = SessionLocal()
     try:
@@ -70,92 +71,107 @@ def cleanExpiredFiles():
             .all()
         )
 
-        logger.info(f"Iniciando limpieza de {len(expired_files)} archivos expirados.")
+        logger.info(f"Iniciando limpieza de {len(expired_files)} archivos expirados")
 
         for user_file in expired_files:
             pattern = os.path.join(cache_dir, f"{user_file.file_uuid}.*")
             files_to_delete = glob.glob(pattern)
 
             if not files_to_delete:
-                logger.warning(f"No physical file found to delete for UUID: {user_file.file_uuid}")
+                logger.warning(f"No se encontró archivo físico para uuid={user_file.file_uuid}")
             else:
                 for physical_file_path in files_to_delete:
                     try:
                         os.remove(physical_file_path)
                         logger.info(f"Archivo físico eliminado: {physical_file_path}")
-                    except Exception as e:
-                        logger.error(f"Error eliminando archivo físico {physical_file_path}: {e}")
+                    except Exception as exc:
+                        logger.error(
+                            f"Error eliminando archivo físico {physical_file_path}: {exc}"
+                        )
 
             try:
                 success = delete_user_file(db, user_file.id)
                 if success:
-                    logger.info(f"Registro DB eliminado para archivo ID {user_file.id}")
+                    logger.info(f"Registro DB eliminado para file_id={user_file.id}")
                 else:
-                    logger.warning(f"No se pudo eliminar registro DB para archivo ID {user_file.id}")
-            except SQLAlchemyError as e:
-                logger.error(f"Error eliminando registro DB archivo ID {user_file.id}: {e}")
+                    logger.warning(f"No se pudo eliminar registro DB file_id={user_file.id}")
+            except SQLAlchemyError as exc:
+                logger.error(f"Error DB eliminando file_id={user_file.id}: {exc}")
 
-        logger.info("Limpieza de archivos expirados finalizada.")
+        logger.info("Limpieza de archivos expirados finalizada")
 
     finally:
         db.close()
 
 
-async def ProcessDocumentFromCache(Uuid: str, DbSession, ProcessCallback, DeleteCondition):
+async def ProcessDocumentFromCache(
+    uuid: str,
+    db_session: Session,
+    process_callback,
+    delete_condition,
+):
     """
     Lee un documento desde ___cache___ usando el UUID.
     - Soporta cualquier extensión.
     - Actualiza en DB la última vez que fue utilizado.
-    - Ejecuta el proceso y decide si eliminar el archivo según DeleteCondition.
+    - Ejecuta el proceso y decide si eliminar el archivo.
     """
 
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
     cache_dir = os.path.join(base_dir, CACHE_FOLDER_NAME)
 
-    Matches = glob.glob(os.path.join(cache_dir, f"{Uuid}.*"))
-    print("Uuid:", Uuid)
-    if not Matches:
-        logger.warning(f"No file found for UUID: {Uuid}")
+    matches = glob.glob(os.path.join(cache_dir, f"{uuid}.*"))
+
+    if not matches:
+        logger.warning(f"No se encontró archivo para uuid={uuid}")
         return {"success": False, "detail": "File not found for given UUID"}
 
-    FilePath = Matches[0]
+    file_path = matches[0]
 
     try:
-        file_record = DbSession.query(UserFile).filter(UserFile.file_uuid == Uuid).first()
+        file_record = (
+            db_session.query(UserFile)
+            .filter(UserFile.file_uuid == uuid)
+            .first()
+        )
+
         if file_record:
             file_record.last_access = datetime.now(timezone.utc)
-            DbSession.commit()
-            logger.info(f"Updated last_access for UUID {Uuid}")
+            db_session.commit()
+            logger.info(f"last_access actualizado para uuid={uuid}")
 
-        with open(FilePath, "rb") as f:
-            FileBytes = f.read()
+        with open(file_path, "rb") as f:
+            file_bytes = f.read()
 
-        Result = await ProcessCallback(FileBytes)
+        result = await process_callback(file_bytes)
 
-        if DeleteCondition(Result):
+        if delete_condition(result):
             try:
-                os.remove(FilePath)
-                logger.info(f"File deleted for UUID {Uuid}: {os.path.basename(FilePath)}")
-            except Exception as e:
-                logger.warning(f"Could not delete file {os.path.basename(FilePath)}: {str(e)}")
+                os.remove(file_path)
+                logger.info(f"Archivo eliminado del cache uuid={uuid}")
+            except Exception as exc:
+                logger.warning(
+                    f"No se pudo eliminar archivo físico uuid={uuid}: {exc}"
+                )
         else:
-            logger.info(f"File retained for UUID {Uuid}")
+            logger.info(f"Archivo retenido en cache uuid={uuid}")
 
-        return Result
+        return result
 
-    except Exception as e:
-        logger.error(f"Error processing file {os.path.basename(FilePath)}: {str(e)}")
-        return {"success": False, "detail": str(e)}
+    except Exception as exc:
+        logger.exception(f"Error procesando archivo uuid={uuid}")
+        return {"success": False, "detail": str(exc)}
 
-#----------WATCHDOG----------
+
+# ---------- WATCHDOG ----------
 def StartWatchdogScheduler():
     """
-    Inicializa y lanza el scheduler para limpieza periódica.
-    Debe llamarse en startup de FastAPI.
+    Inicializa el scheduler de limpieza periódica.
     """
     scheduler = AsyncIOScheduler()
     trigger = IntervalTrigger(hours=1)
     scheduler.add_job(cleanExpiredFiles, trigger, id="file_cleanup_job")
     scheduler.start()
-    logger.info("Watchdog scheduler iniciado para limpieza periódica de archivos.")
+
+    logger.info("Watchdog scheduler iniciado")
     return scheduler

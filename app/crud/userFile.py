@@ -1,13 +1,10 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from app.models.userFile import UserFile, FileStatus
-from ___loggin___.config import LogCategory
-from ___loggin___.logger import get_category_logger
+from ___loggin___.config import LogArea, LogCategory
+from ___loggin___.logger import get_logger
 
-
-log = get_category_logger(LogCategory.USER_FILE)
-
-
+log = get_logger(LogArea.CRUD, LogCategory.USER_FILE)
 
 def create_user_file(db: Session, user_id: int, file_name: str, file_uuid: str) -> UserFile:
     try:
@@ -29,7 +26,6 @@ def create_user_file(db: Session, user_id: int, file_name: str, file_uuid: str) 
         log.error(f"Error en create_user_file: {e}")
         raise
 
-
 def get_user_file(db: Session, file_id: int) -> UserFile | None:
     try:
         file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == False).first()
@@ -41,7 +37,6 @@ def get_user_file(db: Session, file_id: int) -> UserFile | None:
     except Exception as e:
         log.error(f"Error en get_user_file: {e}")
         raise
-
 
 def get_user_file_by_uuid(db: Session, file_uuid: str) -> UserFile | None:
     try:
@@ -55,7 +50,6 @@ def get_user_file_by_uuid(db: Session, file_uuid: str) -> UserFile | None:
         log.error(f"Error en get_user_file_by_uuid: {e}")
         raise
 
-
 def get_user_files_by_user(db: Session, user_id: int) -> list[UserFile]:
     try:
         files = db.query(UserFile).filter(UserFile.user_id == user_id, UserFile.is_deleted == False).all()
@@ -64,7 +58,6 @@ def get_user_files_by_user(db: Session, user_id: int) -> list[UserFile]:
     except Exception as e:
         log.error(f"Error en get_user_files_by_user: {e}")
         raise
-
 
 def update_file_status(db: Session, file_id: int, new_status: FileStatus) -> UserFile | None:
     try:
@@ -100,7 +93,6 @@ def update_file_status(db: Session, file_id: int, new_status: FileStatus) -> Use
         log.error(f"Error en update_file_status: {e}")
         raise
 
-
 def delete_user_file(db: Session, file_id) -> bool:
     try:
         user_file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == False).first()
@@ -116,7 +108,6 @@ def delete_user_file(db: Session, file_id) -> bool:
         log.error(f"Error en delete_user_file: {e}")
         raise
 
-
 def restore_user_file(db: Session, file_id: int) -> bool:
     try:
         user_file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == True).first()
@@ -131,7 +122,6 @@ def restore_user_file(db: Session, file_id: int) -> bool:
     except Exception as e:
         log.error(f"Error en restore_user_file: {e}")
         raise
-
 
 def user_owns_file(db: Session, user_id: int, file_id: int) -> bool:
     try:

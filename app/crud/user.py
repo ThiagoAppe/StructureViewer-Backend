@@ -6,13 +6,13 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 
 # Logs
-from ___loggin___.logger import get_category_logger
-from ___loggin___.config import LogCategory
+from ___loggin___.config import LogCategory, LogArea
+from ___loggin___.logger import get_logger
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Logger específico para usuarios (usando el enum correcto)
-log = get_category_logger(LogCategory.USER)
+log = get_logger(LogArea.CRUD, LogCategory.USER)
 
 
 def get_users(db: Session):

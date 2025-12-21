@@ -29,6 +29,7 @@ class LogArea(Enum):
     ROUTERS = "routers"
     UTILS = "utils"
     GENERAL = "general"
+    SIM = "SIM"
 
 
 class LogCategory(Enum):
@@ -42,6 +43,10 @@ class LogCategory(Enum):
     FILES = "files"
     NOTIFICATION = "notification"
     SYSTEM = "system"
+    SIMREADER = "SIM_DB"
+    SIMSTRUCTURE = "SIM_Structure"
+    SIMPLANOCOMPARATOR = "SIM_Document_Comparator"
+    SIMOCRSCANNER = "SIM_OCR_SCANNER"
 
 
 log_folder = _ensure_log_folder(os.getenv("LOG_FOLDER", "loggin/history"))

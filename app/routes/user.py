@@ -118,7 +118,7 @@ def login(data: LoginData, response: Response, db: Session = Depends(get_db)):
         httponly=True,
         secure=False,
         samesite="lax",
-        max_age=60 * 60,
+        max_age=60 * 60 * 10,
         path="/"
     )
     return res

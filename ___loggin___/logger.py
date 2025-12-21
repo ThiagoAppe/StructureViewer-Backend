@@ -13,20 +13,30 @@ from .formatters import ColorFormatter, JsonFormatter
 from .handlers import create_file_handler, create_console_handler
 
 
-def get_logger(name: str = "app", area: LogArea = LogArea.GENERAL) -> logging.Logger:
+def get_logger(area: LogArea, category: LogCategory) -> logging.Logger:
     """
-    Create and return a configured logger instance.
+    Create and return a configured logger bound to a specific area and category.
 
     Parameters:
-        name (str): Name of the logger.
-        area (str): Functional area used for file handler routing.
+        area (LogArea): Functional/logical area of the application.
+        category (LogCategory): Business or domain category.
 
     Returns:
         logging.Logger: A fully configured logger instance.
+
+    Raises:
+        TypeError: If area or category are not valid enum instances.
     """
+    if not isinstance(area, LogArea):
+        raise TypeError("area must be an instance of LogArea enum")
+
+    if not isinstance(category, LogCategory):
+        raise TypeError("category must be an instance of LogCategory enum")
+
     level = int(log_level)
 
-    logger = logging.getLogger(name)
+    logger_name = f"{area.value}.{category.value}"
+    logger = logging.getLogger(logger_name)
     logger.setLevel(level)
 
     if not logger.handlers:
@@ -52,16 +62,3 @@ def get_logger(name: str = "app", area: LogArea = LogArea.GENERAL) -> logging.Lo
             logger.addHandler(console_handler)
 
     return logger
-
-
-def get_category_logger(category: LogCategory) -> logging.Logger:
-    """
-    Return a logger associated with a specific logical category.
-
-    Parameters:
-        category (str): Name representing the logging category.
-
-    Returns:
-        logging.Logger: Logger configured for the given category.
-    """
-    return get_logger(name=category.value, area=LogArea.GENERAL)

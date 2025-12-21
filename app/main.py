@@ -1,3 +1,6 @@
+from ___loggin___.logger import get_logger, LogArea, LogCategory
+_ = get_logger(LogArea.CORE, LogCategory.SYSTEM)
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -13,7 +16,6 @@ from app.services.documents.document_handler.document_handler import StartWatchd
 
 # variable para guardar scheduler y poder detenerlo
 scheduler = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
