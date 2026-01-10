@@ -11,9 +11,9 @@ from app.database import get_db
 from app.validation import auth_required
 
 from app.services.documents.analize.analize import AnalyzeDocument
-from app.services.documents.document_handler.document_handler import (
-    SaveUploadedFile,
-    ProcessDocumentFromCache as process_document_from_cache,
+from app.services.files.files_handler import save_uploaded_file
+from app.services.documents.pdf_cache_processor import (
+    process_pdf_from_cache,
 )
 
 logger = get_logger(LogArea.SERVICES, LogCategory.FILES)
@@ -21,7 +21,11 @@ logger = get_logger(LogArea.SERVICES, LogCategory.FILES)
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
 
-@router.get("/", response_model=List[DocumentosSchema], dependencies=[Depends(auth_required)])
+@router.get(
+    "/",
+    response_model=List[DocumentosSchema],
+    dependencies=[Depends(auth_required)],
+)
 def get_documentos(db: Session = Depends(get_db)):
     """
     Devuelve la lista de documentos configurados desde el JSON local.
@@ -60,7 +64,7 @@ async def analyze_pdf(
     try:
         coords_dict = json.loads(coords)
         logger.debug(f"Coordenadas parseadas correctamente para uuid={uuid}")
-    except json.JSONDecodeError as exc:
+    except json.JSONDecodeError:
         logger.warning(
             f"Formato inválido de coordenadas para uuid={uuid}: {coords}"
         )
@@ -85,18 +89,17 @@ async def analyze_pdf(
         return should_delete
 
     try:
-        response = await process_document_from_cache(
-            uuid=uuid,
+        response = await process_pdf_from_cache(
+            file_uuid=uuid,
             db_session=db,
             process_callback=process_callback,
             delete_condition=delete_condition,
         )
         logger.info(f"Proceso completo para uuid={uuid}")
         return response
-    except Exception as exc:
+    except Exception:
         logger.exception(f"Error inesperado durante el análisis de uuid={uuid}")
         raise
-
 
 
 @router.post("/document-handler", dependencies=[Depends(auth_required)])
@@ -109,7 +112,7 @@ async def handle_document(
     Guarda un archivo subido y registra la metadata.
     """
     user_id = payload["id"]
-    file_info = await SaveUploadedFile(file, db, user_id)
+    file_info = await save_uploaded_file(file, db, user_id)
 
     filtered_info = {
         "file_name": file_info.file_name,

@@ -12,7 +12,7 @@ from app.routes.structure import router as structure_router
 from app.routes.documents import router as documents_router
 from app.routes.articulos import router as articulos_router
 
-from app.services.documents.document_handler.document_handler import StartWatchdogScheduler
+from app.services.files.files_handler import start_watchdog_scheduler
 
 # variable para guardar scheduler y poder detenerlo
 scheduler = None
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     global scheduler
     print("App arrancó con la configuración CORS")
 
-    scheduler = StartWatchdogScheduler()
+    scheduler = start_watchdog_scheduler()
 
     yield
 

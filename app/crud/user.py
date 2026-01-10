@@ -91,3 +91,4 @@ def validate_user(db: Session, username: str, password: str):
     except Exception as e:
         log.error(f"Error en validate_user: {e}")
         raise
+

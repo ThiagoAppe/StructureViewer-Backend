@@ -10,7 +10,8 @@ from .config import (
 )
 
 from .formatters import ColorFormatter, JsonFormatter
-from .handlers import create_file_handler, create_console_handler
+from .handlers.file import create_file_handler
+from .handlers.console import create_console_handler
 
 
 def get_logger(area: LogArea, category: LogCategory) -> logging.Logger:

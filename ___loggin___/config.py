@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 def _ensure_log_folder(path: str) -> str:
     """
     Ensure that the log folder exists. Create it if missing.
@@ -49,7 +48,8 @@ class LogCategory(Enum):
     SIMOCRSCANNER = "SIM_OCR_SCANNER"
 
 
-log_folder = _ensure_log_folder(os.getenv("LOG_FOLDER", "loggin/history"))
+log_folder = _ensure_log_folder(os.getenv("LOG_FOLDER", "loggin"))
+log_history_folder = _ensure_log_folder(os.getenv("LOG_HISTORY_FOLDER", "loggin/history"))
 
 log_level = os.getenv("LOG_LEVEL", "10")
 log_console = os.getenv("LOG_CONSOLE", "true").lower() == "true"

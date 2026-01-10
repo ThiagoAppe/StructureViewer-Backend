@@ -95,18 +95,26 @@ def update_file_status(db: Session, file_id: int, new_status: FileStatus) -> Use
 
 def delete_user_file(db: Session, file_id) -> bool:
     try:
-        user_file = db.query(UserFile).filter(UserFile.id == file_id, UserFile.is_deleted == False).first()
+        user_file = (
+            db.query(UserFile)
+            .filter(UserFile.id == file_id, UserFile.is_deleted == False)
+            .first()
+        )
         if not user_file:
             log.warning(f"No encontrado file_id={file_id}")
             return False
+
         user_file.is_deleted = True
+        user_file.status = "deleted"
         user_file.last_access = datetime.now(timezone.utc)
+
         db.commit()
         log.info(f"Soft delete file_id={file_id}")
         return True
     except Exception as e:
         log.error(f"Error en delete_user_file: {e}")
         raise
+
 
 def restore_user_file(db: Session, file_id: int) -> bool:
     try:

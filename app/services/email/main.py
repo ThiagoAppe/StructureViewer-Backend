@@ -19,7 +19,6 @@ class EmailSender:
             server.login(self.smtp_username, self.smtp_password)
             return server
         except Exception as e:
-            # Consider using a logging library for better error tracking
             print(f"Failed to create SMTP connection: {e}")
             raise
 
@@ -61,10 +60,7 @@ class EmailSender:
                     sender_email, all_recipients, msg.as_string()
                 )
         except Exception as e:
-            # Consider using a logging library for better error tracking
             print(f"Failed to send email: {e}")
-            # Depending on your application's needs, you might want to re-raise the exception
-            # raise
 
         if is_html:
             msg
