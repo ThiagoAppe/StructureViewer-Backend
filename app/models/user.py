@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 from app.models.role import user_roles
 
+
 class User(Base):
     """
     User model representing system users and their associations.
@@ -37,6 +38,6 @@ class User(Base):
 
     permissions = relationship(
         "Permission",
-        secondary="userpermissions",
+        secondary="user_permissions",
         back_populates="users"
     )

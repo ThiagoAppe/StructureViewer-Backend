@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.database import Base
-from app.models.user import User
+from app.models import *
 
 import os
 from dotenv import load_dotenv

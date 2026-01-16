@@ -40,7 +40,7 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
-from app.models import department, subDepartment, user, userSubAreaPermission
+from app.models import department, events, item_unit, item, permission, production_consumption, production_order, role, stock_movement, stock_movement_line, structure, subDepartment, user, userFile, userSubAreaPermission, warehouse, warehouse_location, warehouse_stock, Warehouse
 
 def get_db():
     """

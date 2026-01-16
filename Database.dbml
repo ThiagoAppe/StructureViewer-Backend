@@ -1,0 +1,326 @@
+///////////////////////////////////////////////////////
+// ORGANIZACIÓN / SEGURIDAD
+///////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////
+// DEPARTAMENTOS
+///////////////////////////////////////////////////////
+Table Departments {
+Id int [pk, increment]
+Name varchar(100) [unique, not null]
+}
+
+///////////////////////////////////////////////////////
+// SUBDEPARTAMENTOS
+///////////////////////////////////////////////////////
+Table SubDepartments {
+Id int [pk, increment]
+DepartmentId int [not null]
+Name varchar(100) [not null]
+}
+
+///////////////////////////////////////////////////////
+// PERMISOS
+///////////////////////////////////////////////////////
+Table Permissions {
+Id int [pk, increment]
+Name varchar(100) [unique, not null]
+}
+
+///////////////////////////////////////////////////////
+// ROLES
+///////////////////////////////////////////////////////
+Table Roles {
+Id int [pk, increment]
+Name varchar(100) [unique, not null]
+}
+
+///////////////////////////////////////////////////////
+// USUARIOS
+///////////////////////////////////////////////////////
+Table Users {
+Id int [pk, increment]
+UserName varchar(50) [unique, not null]
+Email varchar(100) [unique, not null]
+DepartmentId int
+IsActive tinyint(1) [not null]
+IsSuperuser tinyint(1) [not null]
+HashedPassword varchar(255) [not null]
+LastToken varchar(255)
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES DE SEGURIDAD
+///////////////////////////////////////////////////////
+
+Table RolePermissions {
+RoleId int [pk]
+PermissionId int [pk]
+}
+
+Table UserRoles {
+UserId int [pk]
+RoleId int [pk]
+}
+
+Table UserPermissions {
+UserId int [pk]
+PermissionId int [pk]
+}
+
+Table UserSubAreaPermissions {
+UserId int [pk]
+SubDepartmentId int [pk]
+PermissionLevel enum('Read','Write') [not null]
+}
+
+///////////////////////////////////////////////////////
+// ARCHIVOS DE USUARIO
+///////////////////////////////////////////////////////
+Table UserFiles {
+Id int [pk, increment]
+Filename varchar(255) [not null]
+FileUuid varchar(32) [not null]
+UserId int [not null]
+UploadDate datetime
+Status enum('pending','processing','done','cancelled')
+LastAccess datetime
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES ORGANIZACIÓN / SEGURIDAD
+///////////////////////////////////////////////////////
+Ref: SubDepartments.DepartmentId > Departments.Id
+Ref: Users.DepartmentId > Departments.Id
+
+Ref: RolePermissions.RoleId > Roles.Id
+Ref: RolePermissions.PermissionId > Permissions.Id
+
+Ref: UserRoles.UserId > Users.Id
+Ref: UserRoles.RoleId > Roles.Id
+
+Ref: UserPermissions.UserId > Users.Id
+Ref: UserPermissions.PermissionId > Permissions.Id
+
+Ref: UserSubAreaPermissions.UserId > Users.Id
+Ref: UserSubAreaPermissions.SubDepartmentId > SubDepartments.Id
+
+Ref: UserFiles.UserId > Users.Id
+
+///////////////////////////////////////////////////////
+// EVENTOS Y NOTIFICACIONES
+///////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////
+// EVENTOS
+///////////////////////////////////////////////////////
+Table Events {
+Id int [pk, increment]
+EventType varchar(50) [not null]
+ReferenceTable varchar(100)
+ReferenceId int
+CreatedAt datetime [not null]
+CreatedBy int
+}
+
+///////////////////////////////////////////////////////
+// EVENTOS POR USUARIO
+///////////////////////////////////////////////////////
+Table UserEvents {
+Id int [pk, increment]
+EventId int [not null]
+UserId int [not null]
+IsRead tinyint(1) [not null, default: 0]
+ReadAt datetime
+}
+
+///////////////////////////////////////////////////////
+// NOTIFICACIONES
+///////////////////////////////////////////////////////
+Table Notifications {
+Id int [pk, increment]
+UserEventId int [not null]
+Channel enum('email','system','push') [not null]
+Sent tinyint(1) [not null, default: 0]
+SentAt datetime
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES EVENTOS / NOTIFICACIONES
+///////////////////////////////////////////////////////
+Ref: Events.CreatedBy > Users.Id
+Ref: UserEvents.EventId > Events.Id
+Ref: UserEvents.UserId > Users.Id
+Ref: Notifications.UserEventId > UserEvents.Id
+
+///////////////////////////////////////////////////////
+// FLUJO DE FIRMAS
+///////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////
+// SOLICITUDES DE FIRMA
+///////////////////////////////////////////////////////
+Table SignatureRequests {
+Id int [pk, increment]
+RequestedBy int [not null]
+RequestedTo int [not null]
+FileUuid varchar(32) [not null]
+Status enum('pending','approved','rejected','cancelled') [not null]
+RequestedAt datetime [not null]
+RespondedAt datetime
+Comments text
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES FIRMAS
+///////////////////////////////////////////////////////
+Ref: SignatureRequests.RequestedBy > Users.Id
+Ref: SignatureRequests.RequestedTo > Users.Id
+
+///////////////////////////////////////////////////////
+// ARTÍCULOS Y ESTRUCTURA
+///////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////
+// UNIDADES DE MEDIDA
+///////////////////////////////////////////////////////
+Table ItemUnits {
+Id int [pk, increment]
+Name varchar(50) [not null]
+Symbol varchar(10) [not null]
+}
+
+///////////////////////////////////////////////////////
+// ARTÍCULOS
+///////////////////////////////////////////////////////
+Table Items {
+Id int [pk, increment]
+Code varchar(50) [unique, not null]
+Name varchar(150) [not null]
+Description text
+ItemType enum('material','conjunto','producto') [not null]
+UnitId int [not null]
+IsActive tinyint(1) [not null, default: 1]
+}
+
+///////////////////////////////////////////////////////
+// BOM / COMPOSICIÓN
+///////////////////////////////////////////////////////
+Table Structure {
+Id int [pk, increment]
+ParentItemId int [not null]
+ComponentItemId int [not null]
+Quantity decimal(12,4) [not null]
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES ARTÍCULOS
+///////////////////////////////////////////////////////
+Ref: Items.UnitId > ItemUnits.Id
+Ref: Structure.ParentItemId > Items.Id
+Ref: Structure.ComponentItemId > Items.Id
+
+///////////////////////////////////////////////////////
+// ALMACENES Y STOCK
+///////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////
+// ALMACENES
+///////////////////////////////////////////////////////
+Table Warehouses {
+Id int [pk, increment]
+Name varchar(100) [not null]
+}
+
+///////////////////////////////////////////////////////
+// UBICACIONES
+///////////////////////////////////////////////////////
+Table WarehouseLocations {
+Id int [pk, increment]
+WarehouseId int [not null]
+Code varchar(50) [not null]
+}
+
+///////////////////////////////////////////////////////
+// STOCK ACTUAL
+///////////////////////////////////////////////////////
+Table WarehouseStock {
+Id int [pk, increment]
+ItemId int [not null]
+WarehouseLocationId int [not null]
+Quantity decimal(14,4) [not null]
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES ALMACENES
+///////////////////////////////////////////////////////
+Ref: WarehouseLocations.WarehouseId > Warehouses.Id
+Ref: WarehouseStock.ItemId > Items.Id
+Ref: WarehouseStock.WarehouseLocationId > WarehouseLocations.Id
+
+///////////////////////////////////////////////////////
+// MOVIMIENTOS DE STOCK
+///////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////
+// MOVIMIENTOS
+///////////////////////////////////////////////////////
+Table StockMovements {
+Id int [pk, increment]
+MovementType enum('in','out','adjustment','production') [not null]
+CreatedAt datetime [not null]
+CreatedBy int [not null]
+}
+
+///////////////////////////////////////////////////////
+// DETALLE DE MOVIMIENTOS
+///////////////////////////////////////////////////////
+Table StockMovementLines {
+Id int [pk, increment]
+StockMovementId int [not null]
+ItemId int [not null]
+WarehouseLocationId int [not null]
+Quantity decimal(14,4) [not null]
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES MOVIMIENTOS
+///////////////////////////////////////////////////////
+Ref: StockMovements.CreatedBy > Users.Id
+Ref: StockMovementLines.StockMovementId > StockMovements.Id
+Ref: StockMovementLines.ItemId > Items.Id
+Ref: StockMovementLines.WarehouseLocationId > WarehouseLocations.Id
+
+///////////////////////////////////////////////////////
+// PRODUCCIÓN
+///////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////
+// ÓRDENES DE PRODUCCIÓN
+///////////////////////////////////////////////////////
+Table ProductionOrders {
+Id int [pk, increment]
+ItemId int [not null]
+Quantity decimal(12,4) [not null]
+Status enum('planned','in_progress','completed','cancelled','deleted') [not null]
+CreatedAt datetime [not null]
+CreatedBy int [not null]
+}
+
+///////////////////////////////////////////////////////
+// CONSUMO REAL DE MATERIALES
+///////////////////////////////////////////////////////
+Table ProductionConsumption {
+Id int [pk, increment]
+ProductionOrderId int [not null]
+ItemId int [not null]
+QuantityUsed decimal(12,4) [not null]
+}
+
+///////////////////////////////////////////////////////
+// RELACIONES PRODUCCIÓN
+///////////////////////////////////////////////////////
+Ref: ProductionOrders.ItemId > Items.Id
+Ref: ProductionOrders.CreatedBy > Users.Id
+Ref: ProductionConsumption.ProductionOrderId > ProductionOrders.Id
+Ref: ProductionConsumption.ItemId > Items.Id

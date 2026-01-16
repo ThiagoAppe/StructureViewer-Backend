@@ -7,7 +7,7 @@ class SubDepartment(Base):
     """
     SQLAlchemy model representing a subdepartment entity.
     """
-    __tablename__ = "subdepartments"
+    __tablename__ = "sub_departments"
 
     id = Column("Id", Integer, primary_key=True, index=True)
     department_id = Column("DepartmentId", Integer, ForeignKey("departments.Id"), nullable=False)
