@@ -1,7 +1,7 @@
 import json
 import uuid
 from pathlib import Path
-from fastapi import UploadFile, Form, File, HTTPException
+from fastapi import HTTPException
 from typing import Annotated
 from sqlalchemy.orm import Session
 from PIL import Image
@@ -15,51 +15,62 @@ from app.services.documents.analize.analizeUtils.comparator import CompareExtrac
 CACHE_DIR = Path(__file__).resolve().parents[2] / "___cache___"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-# analyze_service.py (o donde tengas esta lógica)
-from PIL import Image
-from fastapi import HTTPException
-import json
 
 async def AnalyzeDocument(PdfBytes: bytes, CoordsData: dict, Codigo: str, DbSession):
     """
     Orquesta el análisis de un PDF basado en coordenadas.
-    Este método asume que el PDF ya está en memoria (bytes) y no se encarga
-    de leerlo desde disco ni de borrarlo. Eso lo maneja documentHandler.
-    
-    Flujo:
-    1. Guardar el PDF temporalmente para operaciones internas.
-    2. Guardar las coordenadas como JSON temporal.
-    3. Recortar la región de interés.
-    4. Aplicar OCR sobre la imagen recortada.
-    5. Procesar y normalizar los códigos extraídos.
-    6. Retornar los resultados.
     """
 
     try:
-        # Generar rutas temporales únicas (pero no en ___cache___)
-        TempPdfPath = CACHE_DIR / "__temp_analysis__.pdf"
-        TempJsonPath = CACHE_DIR / "__temp_analysis__.json"
+        if not isinstance(CoordsData, list):
+            raise HTTPException(
+                status_code=400,
+                detail="CoordsData debe ser una lista de coordenadas"
+            )
 
-        # Guardar PDF temporal
+        AnalysisId = uuid.uuid4().hex
+        DebugDir = CACHE_DIR / "debug_crops" / AnalysisId
+        DebugDir.mkdir(parents=True, exist_ok=True)
+
+        TempPdfPath = CACHE_DIR / "__temp_analysis__.pdf"
+
         with open(TempPdfPath, "wb") as f:
             f.write(PdfBytes)
 
-        # Guardar JSON de coordenadas
-        with open(TempJsonPath, "w", encoding="utf-8") as f:
-            json.dump(CoordsData, f, indent=4)
+        all_text = []
+        all_raw_codes = []
 
-        # Recortar región del PDF como imagen
-        cropped_image: Image.Image = CropPDFRegion(
-            TempPdfPath, CoordsData, page_number=CoordsData.get("page", 0)
-        )
+        for idx, coord in enumerate(CoordsData):
 
-        # Ejecutar OCR
-        ocr_result = PerformOCR(cropped_image, TempPdfPath)
+            if not isinstance(coord, dict):
+                continue
 
-        # Normalizar códigos
-        codigos_normalizados = PreProcessExtractedCodes(ocr_result["codes"])
+            page_number = coord.get("page", 0)
 
-        # Generar informe de comparación
+            cropped_image: Image.Image = CropPDFRegion(
+                TempPdfPath,
+                coord,
+                page_number=page_number
+            )
+
+            # -------- DEBUG: guardar recorte --------
+            DebugImagePath = DebugDir / f"crop_page_{page_number}_idx_{idx}.png"
+            cropped_image.save(DebugImagePath)
+            # ----------------------------------------
+
+            ocr_result = PerformOCR(cropped_image, TempPdfPath)
+
+            # -------- DEBUG: guardar resultado OCR --------
+            DebugTextPath = DebugDir / f"crop_page_{page_number}_idx_{idx}.txt"
+            with open(DebugTextPath, "w", encoding="utf-8") as txt_file:
+                txt_file.write(ocr_result.get("text", ""))
+            # ----------------------------------------------
+
+            all_text.append(ocr_result.get("text", ""))
+            all_raw_codes.extend(ocr_result.get("codes", []))
+
+        codigos_normalizados = PreProcessExtractedCodes(all_raw_codes)
+
         report = await CompareExtractedCodesWithStructure(
             MainCode=Codigo,
             ExtractedCodes=codigos_normalizados,
@@ -68,24 +79,24 @@ async def AnalyzeDocument(PdfBytes: bytes, CoordsData: dict, Codigo: str, DbSess
 
         return {
             "success": True,
-            "ocr_text": ocr_result["text"],
-            "raw_codes": ocr_result["codes"],
+            "analysis_id": AnalysisId,
+            "debug_path": str(DebugDir),
+            "ocr_text": "\n".join(all_text),
+            "raw_codes": all_raw_codes,
             "normalized_codes": codigos_normalizados,
             "coords": CoordsData,
             "comparison_report": report
         }
 
-
-    except HTTPException as he:
-        raise he
+    except HTTPException:
+        raise
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
-        for path in [TempPdfPath, TempJsonPath]:
-            try:
-                if path.exists():
-                    path.unlink()
-            except Exception as cleanup_error:
-                print(f"[⚠️] No se pudo eliminar temporal {path}: {cleanup_error}")
+        try:
+            if TempPdfPath.exists():
+                TempPdfPath.unlink()
+        except Exception as cleanup_error:
+            print(f"[⚠️] No se pudo eliminar temporal {TempPdfPath}: {cleanup_error}")
