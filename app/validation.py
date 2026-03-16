@@ -35,17 +35,17 @@ def validate_token(request: Request, db: Session = Depends(get_db)):
     Retorna el payload decodificado si el token es válido.
     """
 
-    #logger.debug("Entrando a ValidateToken")
+    logger.debug("Entrando a ValidateToken")
 
     if request.method == "OPTIONS":
-        #logger.debug("Solicitud OPTIONS detectada, omitiendo autenticación")
+        logger.debug("Solicitud OPTIONS detectada, omitiendo autenticación")
         return None
 
     token = request.cookies.get("access_token")
-    #logger.debug(f"Token recibido de cookies: {token}")
+    logger.debug(f"Token recibido de cookies: {token}")
 
     if not token:
-        #logger.warning("No se encontró token en las cookies")
+        logger.warning("No se encontró token en las cookies")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=Err_Token)
 
     try:
@@ -54,23 +54,23 @@ def validate_token(request: Request, db: Session = Depends(get_db)):
         token_jti = payload.get("jti")
 
         if user_id is None or token_jti is None:
-            #logger.error("Token inválido: falta 'id' o 'jti'")
+            logger.error("Token inválido: falta 'id' o 'jti'")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=Err_Token)
 
-        #logger.debug(f"Payload decodificado correctamente: id={user_id}, jti={token_jti}")
+        logger.debug(f"Payload decodificado correctamente: id={user_id}, jti={token_jti}")
 
         last_jti = get_last_token(db, user_id)
-        #logger.debug(f"Último jti almacenado: {last_jti}")
+        logger.debug(f"Último jti almacenado: {last_jti}")
 
         if last_jti != token_jti:
-            #logger.warning("Token reemplazado o inválido")
+            logger.warning("Token reemplazado o inválido")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=Err_Token)
 
-        #logger.info(f"Token válido para user_id={user_id}")
+        logger.info(f"Token válido para user_id={user_id}")
         return payload
 
     except jwt.ExpiredSignatureError:
-        #logger.warning("Token expirado")
+        logger.warning("Token expirado")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=Err_Token)
 
     except jwt.InvalidTokenError as e:
@@ -85,5 +85,5 @@ def auth_required(payload=Depends(validate_token)):
     Retorna el payload validado para uso en rutas protegidas.
     """
 
-    #logger.info(f"Validación de autenticación exitosa para usuario: {payload.get('id')}")
+    logger.info(f"Validación de autenticación exitosa para usuario: {payload.get('id')}")
     return payload
