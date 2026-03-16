@@ -16,6 +16,13 @@ logger = get_logger(LogArea.DATABASE, LogCategory.SYSTEM)
 # =========================
 load_dotenv()
 
+
+# =========================
+# Activar ODBC Pooling
+# =========================
+pyodbc.pooling = True
+
+
 # =========================
 # Configuración MySQL (SQLAlchemy)
 # =========================
@@ -42,6 +49,7 @@ Base = declarative_base()
 
 from app.models import department, events, item_unit, item, permission, production_consumption, production_order, role, stock_movement, stock_movement_line, structure, subDepartment, user, userFile, userSubAreaPermission, warehouse, warehouse_location, warehouse_stock, Warehouse
 
+
 def get_db():
     """
     Retorna la sesión de SQLAlchemy para MySQL.
@@ -53,14 +61,23 @@ def get_db():
     finally:
         db.close()
 
+
 # =========================
 # Configuración Informix (pyodbc con DSN)
 # =========================
+
+INFORMIX_CONN_STR = (
+    f"DSN={os.getenv('DB_INFORMIX_DSN', 'manufact64')};"
+    f"UID={os.getenv('DB_INFORMIX_UID')};"
+    f"PWD={os.getenv('DB_INFORMIX_PWD')};"
+)
+
+
 @contextmanager
 def get_sim_db():
     """
-    Retorna una conexión activa a la base de datos Informix usando DSN.
-    Se fuerza el modo de solo lectura para proteger la base de datos.
+    Retorna una conexión a Informix usando ODBC pooling.
+    conn.close() devuelve la conexión al pool en lugar de destruirla.
     Uso:
         with get_sim_db() as conn:
             cursor = conn.cursor()
@@ -71,16 +88,10 @@ def get_sim_db():
     start_time = time.perf_counter()
 
     try:
-        conn_str = (
-            f"DSN={os.getenv('DB_INFORMIX_DSN', 'manufact64')};"
-            f"UID={os.getenv('DB_INFORMIX_UID')};"
-            f"PWD={os.getenv('DB_INFORMIX_PWD')};"
-        )
-
-        conn = pyodbc.connect(conn_str)
+        conn = pyodbc.connect(INFORMIX_CONN_STR)
 
         elapsed = (time.perf_counter() - start_time) * 1000
-        logger.info(f"Conexión establecida a Informix en {elapsed:.2f} ms")
+        logger.info(f"Conexión obtenida del pool Informix en {elapsed:.2f} ms")
 
         yield ReadOnlyConnection(conn)
 
@@ -91,7 +102,8 @@ def get_sim_db():
     finally:
         if conn:
             conn.close()
-            logger.info("Conexión Informix cerrada")
+            logger.info("Conexión Informix devuelta al pool")
+
 
 # =========================
 # Clase de conexión solo lectura

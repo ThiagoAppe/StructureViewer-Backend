@@ -15,17 +15,16 @@ from app.validation import auth_required
 
 router = APIRouter(prefix="/articulos", tags=["Artículos"])
 
-
 @router.get("/search-articulo", dependencies=[Depends(auth_required)])
 def search_articulo(
     field: str = Query(..., description="Campo por el que filtrar"),
     value: str = Query(..., description="Valor a buscar"),
-    similar: bool = Query(False, description="Si True, busca coincidencias parciales"),
     limit: int = Query(50, ge=1, le=200, description="Cantidad máxima de registros"),
     offset: int = Query(0, ge=0, description="Desde qué registro comenzar")
 ):
     """
-    Busca artículos por un campo permitido y retorna código y descripción.
+    Busca artículos por un campo permitido y retorna código, descripción,
+    letra de cambio y stock actual.
     """
     try:
         if field not in ORDERED_FIELDS:
@@ -34,7 +33,6 @@ def search_articulo(
         results = search_articles(
             field,
             value,
-            similar=similar,
             limit=limit,
             offset=offset
         )
@@ -43,14 +41,21 @@ def search_articulo(
             "total": len(results),
             "limit": limit,
             "offset": offset,
-            "results": results
+            "results": [
+                {
+                    "codigo": r["art_articu"].strip(),
+                    "descripcion": r["art_descr1"].strip(),
+                    "cambio": r.get("art_cambio", "").strip() if r.get("art_cambio") else "-",
+                    "stock": r.get("art_stoalm", 0)
+                }
+                for r in results
+            ]
         }
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno en la búsqueda de artículos.")
-
 
 @router.get("/get-article-data", dependencies=[Depends(auth_required)])
 def get_articles(

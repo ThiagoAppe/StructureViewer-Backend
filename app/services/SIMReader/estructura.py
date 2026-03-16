@@ -6,6 +6,9 @@ from app.services.SIMReader.articulos import get_articles_data
 
 from ___loggin___.logger import get_logger, LogArea, LogCategory
 
+from datetime import date
+today = date.today()
+
 logger = get_logger(LogArea.SIM, LogCategory.SIMREADER)
 
 # Máximo de hilos
@@ -179,11 +182,13 @@ def get_all_hijos(padre_code: str) -> List[Dict[str, Any]]:
             """
             SELECT TRIM(est_hijo), est_cantid
             FROM manufact.est
-            WHERE est_padre = ? AND est_fechas IS NULL
+            WHERE est_padre = ?
+            AND (est_fechas IS NULL OR est_fechas = ?)
             """,
-            (code,)
+            (code, today)
         )
         query_count += 1
+
         hijos_rows = cursor.fetchall()
 
         logger.debug(f"Encontrados {len(hijos_rows)} hijos para codigo={code}")
@@ -202,18 +207,19 @@ def get_all_hijos(padre_code: str) -> List[Dict[str, Any]]:
 
     with get_sim_db() as conn:
         cursor = conn.cursor()
+
         tree = get_hijos_tree(padre_code, 0, cursor)
 
-    if not tree:
-        logger.debug("get_all_hijos finalizado sin resultados")
-        return []
+        if not tree:
+            logger.debug("get_all_hijos finalizado sin resultados")
+            return []
 
-    logger.debug(
-        f"Árbol generado. Códigos únicos encontrados: {len(all_codes)}, "
-        f"queries ejecutadas: {query_count}"
-    )
+        logger.debug(
+            f"Árbol generado. Códigos únicos encontrados: {len(all_codes)}, "
+            f"queries ejecutadas: {query_count}"
+        )
 
-    articles_info = get_articles_data(list(all_codes))
+        articles_info = get_articles_data(list(all_codes), cursor)
 
     if isinstance(articles_info, list):
         articles_dict = {
@@ -243,4 +249,3 @@ def get_all_hijos(padre_code: str) -> List[Dict[str, Any]]:
     )
 
     return [tree]
-
